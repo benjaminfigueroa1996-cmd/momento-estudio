@@ -1,0 +1,36 @@
+# Verifica cada cambio: tipos, compilación de Next.js y pruebas de reglas en una base Supabase local.
+name: Verificar
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci || npm install
+      - name: Compilar
+        run: npm run build
+        env:
+          # Valores de relleno: la compilación no se conecta a servicios reales
+          NEXT_PUBLIC_SUPABASE_URL: https://ejemplo.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: relleno
+          NEXT_PUBLIC_SITE_URL: https://ejemplo.cl
+      - run: npm run typecheck
+
+  base-de-datos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase init --force || true
+      - run: supabase db start
+      - run: supabase test db
