@@ -8,8 +8,11 @@ function client() {
   if (!s3) {
     s3 = new S3Client({
       region: "auto",
-      endpoint: `https://${env.r2AccountId()}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId: env.r2Key(), secretAccessKey: env.r2Secret() },
+      endpoint: `https://${env.r2AccountId().trim()}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId: env.r2Key().trim(), secretAccessKey: env.r2Secret().trim() },
+      // R2 no acepta las verificaciones de integridad automáticas de las versiones nuevas del SDK
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
     });
   }
   return s3;
