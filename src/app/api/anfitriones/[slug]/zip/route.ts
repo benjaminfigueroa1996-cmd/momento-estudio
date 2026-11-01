@@ -4,7 +4,7 @@ import { hostSession } from "@/lib/session";
 import { stream } from "@/lib/r2";
 import { fail } from "@/lib/guard";
 
-export const maxDuration = 800; // segundos; ver docs/decisiones.md sobre eventos muy grandes
+export const maxDuration = 300; // segundos; ver docs/decisiones.md sobre eventos muy grandes
 
 /**
  * Descarga completa en ZIP, generada en flujo (no se guarda una copia en el servidor).
