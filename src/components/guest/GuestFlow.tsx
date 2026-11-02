@@ -14,7 +14,24 @@ export default function GuestFlow(props: {
 }) {
   const [items, setItems] = useState<Item[]>([]);
   const [current, setCurrent] = useState(0);
-  const [step, setStep] = useState<"inicio" | "destinos" | "revisar" | "enviando" | "listo">("inicio");
+  const [step, setStep] = useState<"inicio" | "destinos" | "revisar" | "enviando" | "listo" | "nota" | "nota-lista">("inicio");
+  const [note, setNote] = useState("");
+  const [notePending, setNotePending] = useState(false);
+  const [sendingNote, setSendingNote] = useState(false);
+
+  async function sendNote() {
+    setSendingNote(true);
+    setError(null);
+    try {
+      const r = await postJSON<{ pending: boolean }>(`/api/e/${props.slug}/mensaje`, { body: note });
+      setNotePending(r.pending);
+      setNote("");
+      setStep("nota-lista");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setSendingNote(false);
+  }
   const [error, setError] = useState<string | null>(null);
   const camera = useRef<HTMLInputElement>(null);
   const gallery = useRef<HTMLInputElement>(null);
@@ -120,15 +137,43 @@ export default function GuestFlow(props: {
 
       {step === "inicio" && (
         <section className="flex flex-1 flex-col px-6 pt-10">
-          <p className="text-[19px] leading-snug">Comparte tus fotos de este día. Puedes enviarlas a la pantalla del evento, al álbum compartido o a ambos.</p>
+          <p className="text-[19px] leading-snug">Comparte tus fotos y mensajes de este día. Puedes enviarlos a la pantalla del evento, al álbum compartido o a ambos.</p>
           <div className="mt-auto space-y-3 pt-10">
             <button className="btn-primary w-full" onClick={() => camera.current?.click()}>Tomar una foto</button>
             <button className="btn-quiet w-full" onClick={() => gallery.current?.click()}>Elegir de mi galería</button>
+            <button className="btn-quiet w-full" onClick={() => { setError(null); setStep("nota"); }}>Escribir solo un mensaje</button>
             {props.albumOpen && <Link className="block py-3 text-center text-[15px] text-carbon/70 underline-offset-4 hover:underline" href={`/e/${props.slug}/album`}>Ver el álbum</Link>}
           </div>
           <p className="mt-6 text-[12px] leading-relaxed text-piedra">
             Tus fotos las reciben los anfitriones de este evento. No necesitas crear una cuenta. <Link href="/privacidad" className="underline">Privacidad</Link>
           </p>
+        </section>
+      )}
+
+      {step === "nota" && (
+        <section className="flex flex-1 flex-col px-6 pt-8">
+          <h2 className="text-[26px]">Un mensaje para la pantalla</h2>
+          <p className="mt-2 text-[15px] text-carbon/70">Aparecerá en la pantalla del evento y quedará guardado para los anfitriones.</p>
+          <textarea className="field mt-6 min-h-[140px] resize-none text-[18px]" maxLength={280} autoFocus
+            placeholder="¡Que viva el amor!" value={note} onChange={(e) => setNote(e.target.value)} />
+          <p className="mt-1 text-right text-[12px] text-piedra">{note.length}/280</p>
+          {error && <p className="mt-2 text-[14px] text-[#8a3b2e]" role="alert">{error}</p>}
+          <div className="mt-auto space-y-3 pt-8">
+            <button className="btn-primary w-full" disabled={!note.trim() || sendingNote} onClick={sendNote}>{sendingNote ? "Enviando…" : "Enviar mensaje"}</button>
+            <button className="btn-quiet w-full" onClick={() => setStep("inicio")}>Volver</button>
+          </div>
+        </section>
+      )}
+
+      {step === "nota-lista" && (
+        <section className="flex flex-1 flex-col px-6 pt-12">
+          <svg width="44" height="44" viewBox="0 0 44 44" className="text-champagne" aria-hidden><circle cx="22" cy="22" r="21" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M14 22.5l5.5 5.5L30.5 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <h2 className="mt-6 text-[32px] leading-tight">Recibimos tu mensaje</h2>
+          <p className="mt-3 text-[16px] text-carbon/75">{notePending ? "Aparecerá en la pantalla cuando los anfitriones lo aprueben." : "Míralo en la pantalla del evento."}</p>
+          <div className="mt-auto space-y-3 pt-10">
+            <button className="btn-primary w-full" onClick={() => setStep("nota")}>Escribir otro mensaje</button>
+            <button className="btn-quiet w-full" onClick={() => setStep("inicio")}>Compartir una foto</button>
+          </div>
         </section>
       )}
 

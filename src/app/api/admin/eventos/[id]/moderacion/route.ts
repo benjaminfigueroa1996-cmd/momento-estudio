@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { adminEvent } from "@/lib/admin-event";
-import { moderate } from "@/lib/media";
+import { moderate, moderateNote } from "@/lib/media";
 import { signGet } from "@/lib/r2";
 import { json, fail } from "@/lib/guard";
 
@@ -31,14 +31,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       display: await signGet(r.media.display_key, { seconds: 1800 }),
     })),
   );
-  return json({ items });
+  const { data: notes } = await db().from("messages").select("id, body, created_at").eq("event_id", id).is("media_id", null).eq("moderation", status).order("created_at").limit(100);
+  return json({ items, notes: notes ?? [] });
 }
 
-const body = z.object({
-  mediaId: z.string().uuid(),
-  destination: z.enum(["screen", "album"]),
-  action: z.enum(["approve", "reject", "remove", "feature", "unfeature"]),
-});
+const body = z.union([
+  z.object({ mediaId: z.string().uuid(), destination: z.enum(["screen", "album"]), action: z.enum(["approve", "reject", "remove", "feature", "unfeature"]) }),
+  z.object({ messageId: z.string().uuid(), action: z.enum(["approve", "reject", "remove"]) }),
+]);
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -46,6 +46,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!a) return fail("No autorizado.", 401);
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("Datos no válidos.");
-  await moderate(a.ev, parsed.data.mediaId, parsed.data.destination, parsed.data.action, a.actor);
+  const d = parsed.data;
+  if ("messageId" in d) await moderateNote(a.ev, d.messageId, d.action, a.actor);
+  else await moderate(a.ev, d.mediaId, d.destination, d.action, a.actor);
   return json({ ok: true });
 }

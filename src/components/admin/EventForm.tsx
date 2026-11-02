@@ -21,16 +21,24 @@ export default function EventForm({ action, ev, submit }: { action: (f: FormData
       <fieldset className="grid gap-4 md:grid-cols-2">
         <legend className="mb-2 font-serif text-[26px]">Evento</legend>
         <label className="block"><span className="label">Nombre del evento</span><input name="name" required className="field" defaultValue={ev?.name} placeholder="Matrimonio de Ana y Luis" /></label>
-        <label className="block"><span className="label">Anfitriones</span><input name="hosts_names" required className="field" defaultValue={ev?.hosts_names} placeholder="Ana y Luis" /></label>
+        <label className="block"><span className="label">Anfitriones</span><input name="hosts_names" required className="field" defaultValue={ev?.hosts_names} placeholder="Francisca & Benjamín" /></label>
         <label className="block"><span className="label">Enlace (slug)</span><input name="slug" required className="field" defaultValue={ev?.slug} placeholder="ana-y-luis" />
           <span className="mt-1 block text-[12px] text-piedra">Minúsculas, números y guiones. Queda en el QR.</span></label>
         <label className="block"><span className="label">Fecha y hora (Santiago)</span><input name="starts_at" type="datetime-local" required className="field" defaultValue={local(ev?.starts_at)} /></label>
         <label className="block"><span className="label">Ciudad o lugar</span><input name="city" className="field" defaultValue={ev?.city ?? ""} /></label>
+        <label className="block"><span className="label">Tipo de evento</span>
+          <select name="event_type" className="field" defaultValue={ev?.event_type ?? "matrimonio"}>
+            <option value="matrimonio">Matrimonio</option><option value="cumpleanos">Cumpleaños</option>
+            <option value="celebracion">Celebración</option><option value="corporativo">Evento corporativo</option><option value="otro">Otro</option>
+          </select></label>
+        <label className="block"><span className="label">Frase en pantalla</span>
+          <input name="tagline" maxLength={60} className="field" defaultValue={ev?.tagline ?? ""} placeholder="¡Que siga la fiesta!" />
+          <span className="mt-1 block text-[12px] text-piedra">Vacío: se usa la frase según el tipo de evento.</span></label>
       </fieldset>
 
       <fieldset className="grid gap-4 md:grid-cols-2">
         <legend className="mb-2 font-serif text-[26px]">Pantalla y moderación</legend>
-        {n("screen_slide_seconds", "Segundos por foto en pantalla", 10)}
+        {n("screen_slide_seconds", "Segundos entre fotos nuevas en pantalla", 10, "Cada foto permanece en el muro unas 7 veces este tiempo (mínimo 45 s) y no se repite.")}
         {n("screen_ttl_minutes", "Minutos que una foto queda en la rotación", 45, "Después sale de la pantalla y sigue en el archivo privado.")}
         <div>{c("moderate_screen", "Aprobar antes de mostrar en pantalla", true)}{c("moderate_album", "Aprobar antes de publicar en el álbum", false)}{c("hosts_can_moderate", "Los anfitriones también pueden aprobar", true)}</div>
       </fieldset>

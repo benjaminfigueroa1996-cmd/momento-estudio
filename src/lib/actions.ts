@@ -19,6 +19,8 @@ const eventSchema = z.object({
   screen_ttl_minutes: z.coerce.number().int().min(1).max(1440),
   max_uploads_per_guest: z.coerce.number().int().min(1).max(500),
   max_file_mb: z.coerce.number().int().min(1).max(200),
+  event_type: z.enum(["matrimonio", "cumpleanos", "celebracion", "corporativo", "otro"]),
+  tagline: z.string().trim().max(60).optional(),
 });
 
 function readEvent(f: FormData) {
@@ -26,10 +28,12 @@ function readEvent(f: FormData) {
     name: f.get("name"), hosts_names: f.get("hosts_names"), slug: f.get("slug"), starts_at: f.get("starts_at"),
     city: f.get("city") || undefined, screen_slide_seconds: f.get("screen_slide_seconds"), screen_ttl_minutes: f.get("screen_ttl_minutes"),
     max_uploads_per_guest: f.get("max_uploads_per_guest"), max_file_mb: f.get("max_file_mb"),
+    event_type: f.get("event_type") || "matrimonio", tagline: String(f.get("tagline") ?? ""),
   });
   return {
     ...base,
     starts_at: new Date(base.starts_at).toISOString(),
+    tagline: base.tagline || null,
     timezone: "America/Santiago",
     moderate_screen: bool(f.get("moderate_screen")),
     moderate_album: bool(f.get("moderate_album")),

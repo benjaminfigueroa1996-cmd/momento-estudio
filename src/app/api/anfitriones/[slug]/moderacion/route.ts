@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db, getEventBySlug, audit } from "@/lib/db";
 import { hostSession } from "@/lib/session";
-import { moderate } from "@/lib/media";
+import { moderate, moderateNote } from "@/lib/media";
 import { signGet } from "@/lib/r2";
 import { json, fail } from "@/lib/guard";
 
@@ -34,17 +34,25 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
       thumb: await signGet(r.media.thumb_key, { seconds: 1800 }),
     })),
   );
-  return json({ items });
+  const { data: notes } = await db().from("messages").select("id, body, created_at").eq("event_id", g.ev.id).is("media_id", null).eq("moderation", "pending").order("created_at").limit(100);
+  return json({ items, notes: notes ?? [] });
 }
 
-const body = z.object({ mediaId: z.string().uuid(), destination: z.enum(["screen", "album"]), action: z.enum(["approve", "reject", "remove"]) });
+const body = z.union([
+  z.object({ mediaId: z.string().uuid(), destination: z.enum(["screen", "album"]), action: z.enum(["approve", "reject", "remove"]) }),
+  z.object({ messageId: z.string().uuid(), action: z.enum(["approve", "reject", "remove"]) }),
+]);
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const g = await guard((await params).slug);
   if ("error" in g) return g.error;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("Datos no válidos.");
-  await moderate(g.ev, parsed.data.mediaId, parsed.data.destination, parsed.data.action, `host:${g.s.accessId}`);
-  await audit(g.ev.id, "host", g.s.accessId, `moderation.${parsed.data.action}`, { media: parsed.data.mediaId });
+  const d = parsed.data;
+  if ("messageId" in d) await moderateNote(g.ev, d.messageId, d.action, `host:${g.s.accessId}`);
+  else {
+    await moderate(g.ev, d.mediaId, d.destination, d.action, `host:${g.s.accessId}`);
+    await audit(g.ev.id, "host", g.s.accessId, `moderation.${d.action}`, { media: d.mediaId });
+  }
   return json({ ok: true });
 }

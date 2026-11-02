@@ -39,6 +39,9 @@ export type EventRow = {
   host_access_until: string | null;
   retention_until: string | null;
   hosts_can_moderate: boolean;
+  event_type: "matrimonio" | "cumpleanos" | "celebracion" | "corporativo" | "otro";
+  tagline: string | null;
+  logo_key: string | null;
 };
 
 export async function getEventBySlug(slug: string): Promise<EventRow | null> {

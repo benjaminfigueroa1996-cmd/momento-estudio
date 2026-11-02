@@ -43,6 +43,7 @@ export default async function EventAdmin({ params }: { params: Promise<{ id: str
         hasHostAccess={(access ?? []).length > 0}
         operators={(operators ?? []) as { id: string; name: string; revoked_at: string | null }[]}
         hasCover={!!ev.cover_key}
+        hasLogo={!!ev.logo_key}
         links={(links ?? []) as { id: string; name: string; revoked_at: string | null }[]}
         devices={((devices ?? []) as { id: string; name: string; last_seen_at: string | null; revoked_at: string | null; token_hash: string | null }[]).map((d) => ({ ...d, paired: !!d.token_hash, token_hash: undefined }))}
         live={(live as { paused: boolean; layout: string; show_qr: boolean; featured_media_id: string | null } | null) ?? { paused: false, layout: "auto", show_qr: true, featured_media_id: null }}

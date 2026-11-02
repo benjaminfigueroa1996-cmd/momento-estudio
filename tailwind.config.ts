@@ -15,6 +15,7 @@ export default {
       fontFamily: {
         serif: ["var(--font-serif)", "Georgia", "serif"],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        hand: ["var(--font-hand)", "cursive"],
       },
       transitionTimingFunction: { suave: "cubic-bezier(0.22, 1, 0.36, 1)" },
     },

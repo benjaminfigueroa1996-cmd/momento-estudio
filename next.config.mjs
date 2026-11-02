@@ -12,5 +12,6 @@ export default {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
-  images: { unoptimized: true },
+  // Optimización automática de las fotos del sitio (WebP/AVIF y tamaños según pantalla)
+  images: { formats: ["image/avif", "image/webp"] },
 };

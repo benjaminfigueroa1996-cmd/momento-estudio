@@ -13,6 +13,7 @@ type Props = {
   devices: { id: string; name: string; last_seen_at: string | null; revoked_at: string | null; paired: boolean }[];
   operators: { id: string; name: string; revoked_at: string | null }[];
   hasCover: boolean;
+  hasLogo: boolean;
   live: { paused: boolean; layout: string; show_qr: boolean; featured_media_id: string | null };
 };
 
@@ -20,7 +21,7 @@ const Block = ({ title, children }: { title: string; children: React.ReactNode }
   <section className="border-t border-carbon/10 py-8"><h2 className="text-[26px]">{title}</h2><div className="mt-4">{children}</div></section>
 );
 
-export default function EventTools({ eventId, urls, hasHostAccess, links, devices, operators, hasCover, live }: Props) {
+export default function EventTools({ eventId, urls, hasHostAccess, links, devices, operators, hasCover, hasLogo, live }: Props) {
   const base = `/api/admin/eventos/${eventId}`;
   const [hostCode, setHostCode] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -28,6 +29,14 @@ export default function EventTools({ eventId, urls, hasHostAccess, links, device
   const [state, setState] = useState(live);
   const [msg, setMsg] = useState<string | null>(null);
   const [opUrl, setOpUrl] = useState<string | null>(null);
+
+  async function uploadLogo(file: File) {
+    if (!/^image\/(png|jpeg)$/.test(file.type)) throw new Error("El logo debe ser PNG o JPEG.");
+    const { url, type } = await postJSON<{ url: string; type: string }>(`${base}/logo?type=${encodeURIComponent(file.type)}`, {});
+    await put(url, file, type);
+    const r = await fetch(`${base}/logo`, { method: "PUT" });
+    if (!r.ok) throw new Error((await r.json()).error);
+  }
 
   async function uploadCover(file: File) {
     const prep = await prepare(file);
@@ -73,6 +82,13 @@ export default function EventTools({ eventId, urls, hasHostAccess, links, device
         <label className="btn-quiet mt-4 cursor-pointer">Elegir imagen
           <input type="file" accept="image/jpeg,image/png" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) call(() => uploadCover(f), "Portada actualizada. Recarga para verla."); }} /></label>
         {hasCover && <button className="btn-quiet ml-3" onClick={() => call(() => fetch(`${base}/portada`, { method: "DELETE" }), "Portada quitada.")}>Quitar portada</button>}
+      </Block>
+
+      <Block title="Logo del evento (opcional)">
+        <p className="text-[15px] text-carbon/80">{hasLogo ? "El evento tiene logo." : "Sin logo."} Aparece en la pantalla en vivo junto al nombre del evento. Ideal: PNG con fondo transparente.</p>
+        <label className="btn-quiet mt-4 cursor-pointer">Elegir logo
+          <input type="file" accept="image/png,image/jpeg" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) call(() => uploadLogo(f), "Logo actualizado."); }} /></label>
+        {hasLogo && <button className="btn-quiet ml-3" onClick={() => call(() => fetch(`${base}/logo`, { method: "DELETE" }), "Logo quitado.")}>Quitar logo</button>}
       </Block>
 
       <Block title="Operador de pantalla">

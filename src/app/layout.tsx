@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Instrument_Sans } from "next/font/google";
+import { Caveat, Cormorant_Garamond, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 
 // Tipografías con licencia SIL Open Font License (uso comercial permitido)
 const serif = Cormorant_Garamond({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-serif", display: "swap" });
 const sans = Instrument_Sans({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// Letra manuscrita para los mensajes del muro de polaroids (SIL Open Font License)
+const hand = Caveat({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-hand", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Momento Estudio", template: "%s · Momento Estudio" },
@@ -15,7 +17,7 @@ export const viewport: Viewport = { themeColor: "#F7F3ED", width: "device-width"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es-CL" className={`${serif.variable} ${sans.variable}`}>
+    <html lang="es-CL" className={`${serif.variable} ${sans.variable} ${hand.variable}`}>
       <body>{children}</body>
     </html>
   );

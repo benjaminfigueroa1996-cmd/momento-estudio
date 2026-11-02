@@ -51,8 +51,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     return { name: `${root}/${dir}/${name}`, key: m.original_key, lastModified: new Date(m.created_at) };
   });
 
+  const { data: notes } = await db().from("messages").select("body, created_at").eq("event_id", ev.id).is("media_id", null).order("created_at");
+  const notesCsv = ["fecha,mensaje", ...((notes ?? []) as { body: string; created_at: string }[]).map((n) => [n.created_at, n.body].map(csvCell).join(","))];
+
   async function* entries() {
     yield { name: `${root}/Mensajes/indice.csv`, input: "\uFEFF" + index.join("\n") };
+    yield { name: `${root}/Mensajes/mensajes_sin_foto.csv`, input: "\uFEFF" + notesCsv.join("\n") };
     for (const f of files) yield { name: f.name, lastModified: f.lastModified, input: await stream(f.key) };
   }
 

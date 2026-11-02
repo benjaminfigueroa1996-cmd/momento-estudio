@@ -24,12 +24,26 @@ export default function HostPanel({ slug, name, hosts, stats }: { slug: string; 
   const [open, setOpen] = useState<Item | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<{ mediaId: string; destination: string; message: string | null; thumb: string }[]>([]);
+  const [pendingNotes, setPendingNotes] = useState<{ id: string; body: string }[]>([]);
+  const [allMessages, setAllMessages] = useState<{ id: string; body: string; createdAt: string; thumb: string | null }[]>([]);
 
   const loadPending = useCallback(async () => {
     const r = await fetch(`/api/anfitriones/${slug}/moderacion`);
-    setPending(r.ok ? (await r.json()).items : []);
+    const j = r.ok ? await r.json() : { items: [], notes: [] };
+    setPending(j.items ?? []);
+    setPendingNotes(j.notes ?? []);
   }, [slug]);
   useEffect(() => { loadPending(); const t = setInterval(loadPending, 10000); return () => clearInterval(t); }, [loadPending]);
+
+  useEffect(() => {
+    if (filter !== "mensajes") return;
+    fetch(`/api/anfitriones/${slug}/mensajes`).then((r) => r.json()).then((j) => setAllMessages(j.items ?? []));
+  }, [filter, slug]);
+
+  async function decideNote(messageId: string, action: "approve" | "reject") {
+    await fetch(`/api/anfitriones/${slug}/moderacion`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messageId, action }) });
+    loadPending();
+  }
 
   async function decide(mediaId: string, destination: string, action: "approve" | "reject") {
     await fetch(`/api/anfitriones/${slug}/moderacion`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mediaId, destination, action }) });
@@ -85,6 +99,21 @@ export default function HostPanel({ slug, name, hosts, stats }: { slug: string; 
         ))}
       </dl>
 
+      {pendingNotes.length > 0 && (
+        <section className="mt-10 rounded-2xl border border-champagne/50 bg-marfil p-5">
+          <h2 className="text-[26px]">Mensajes por aprobar ({pendingNotes.length})</h2>
+          <ul className="mt-4 space-y-3">
+            {pendingNotes.map((n) => (
+              <li key={n.id} className="flex flex-wrap items-baseline justify-between gap-4">
+                <p className="font-serif text-[20px]">“{n.body}”</p>
+                <span className="flex gap-3 text-[14px]"><button className="font-medium underline" onClick={() => decideNote(n.id, "approve")}>Aprobar</button>
+                  <button className="underline" onClick={() => decideNote(n.id, "reject")}>Rechazar</button></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {pending.length > 0 && (
         <section className="mt-10 rounded-2xl border border-champagne/50 bg-marfil p-5">
           <h2 className="text-[26px]">Por aprobar ({pending.length})</h2>
@@ -118,12 +147,14 @@ export default function HostPanel({ slug, name, hosts, stats }: { slug: string; 
 
       {filter === "mensajes" ? (
         <ul className="mt-6 divide-y divide-carbon/10">
-          {items.map((it) => (
-            <li key={it.id} className="flex gap-5 py-5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.thumb} alt="" className="h-20 w-20 rounded-lg object-cover" />
-              <div>{it.messages.map((m, i) => <p key={i} className="font-serif text-[22px] leading-snug">“{m}”</p>)}
-                <p className="mt-1 text-[13px] text-piedra">{new Date(it.createdAt).toLocaleString("es-CL")}</p></div>
+          {allMessages.map((m) => (
+            <li key={m.id} className="flex gap-5 py-5">
+              {m.thumb
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={m.thumb} alt="" className="h-20 w-20 rounded-lg object-cover" />
+                : <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-beige font-serif text-[28px] text-champagne">“</span>}
+              <div><p className="font-serif text-[22px] leading-snug">“{m.body}”</p>
+                <p className="mt-1 text-[13px] text-piedra">{new Date(m.createdAt).toLocaleString("es-CL")}{m.thumb ? "" : " · sin foto"}</p></div>
             </li>
           ))}
         </ul>

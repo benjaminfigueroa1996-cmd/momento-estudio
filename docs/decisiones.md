@@ -50,3 +50,14 @@ Activada por defecto (`hosts_can_moderate`). Los anfitriones aprueban o rechazan
 
 ## Verificación continua
 Como el código se escribió sin poder compilarlo, cada cambio se compila y prueba en GitHub Actions. Ningún cambio debería llegar a producción si esa verificación falla.
+
+## Pantalla en vivo con composición automática
+La pantalla detecta su proporción (horizontal, vertical, cuadrada o ultrapanorámica) y arma escenas con una, dos, tres o cuatro fotos y mensajes, eligiendo entre varias composiciones según el contenido disponible. Lo nuevo siempre tiene prioridad; si no hay nada nuevo, se muestra lo que hace más tiempo no aparece. El nombre de los anfitriones, la fecha, la frase, el QR del evento y la firma de Momento Estudio quedan fijos en una franja lateral (pantallas anchas) o inferior (verticales y cuadradas). Si no hay contenido, se muestra una pantalla de espera con un QR grande.
+
+## Mensajes sin foto
+Los invitados pueden enviar solo un mensaje. Se guarda en `messages` sin `media_id`, con su propia moderación y tiempo en pantalla, y aparece en el archivo de los anfitriones y en el ZIP (`Mensajes/mensajes_sin_foto.csv`).
+
+## Muro de polaroids (identidad principal de la pantalla)
+Es el modo automático de la pantalla. Cada foto entra como una instantánea con marco crema, ligeramente inclinada, con efecto de revelado, en posiciones de collage (dos filas en pantallas anchas, tres en verticales). Los mensajes de la foto van manuscritos en el marco (letra Caveat, licencia SIL OFL); los mensajes sin foto aparecen como tarjetas con cinta de papel.
+
+**Reproducción única:** al entrar una foto o un mensaje al muro, la pantalla lo registra en la base (`screen_played_at`). La API solo entrega lo no proyectado, más lo proyectado hace menos del tiempo de permanencia (para reconstruir el muro si se recarga la pantalla). Nada vuelve a reproducirse. Cada elemento permanece unas 7 veces el intervalo entre fotos (mínimo 45 s) o hasta que lo reemplaza una foto nueva; cuando no queda contenido, aparece la pantalla de espera.

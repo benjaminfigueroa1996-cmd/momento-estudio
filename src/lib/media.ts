@@ -164,3 +164,14 @@ export async function moderate(
   await db().from("media_destinations").update(patch).eq("media_id", mediaId).eq("event_id", ev.id).eq("destination", destination);
   await db().from("moderation").insert({ event_id: ev.id, media_id: mediaId, destination, action, actor });
 }
+
+/** Moderación de mensajes sin foto. Nunca borra el mensaje: los anfitriones lo conservan. */
+export async function moderateNote(ev: EventRow, messageId: string, action: "approve" | "reject" | "remove", actor: string) {
+  const now = new Date();
+  const patch =
+    action === "approve"
+      ? { moderation: "approved", approved_at: now.toISOString(), screen_expires_at: new Date(now.getTime() + ev.screen_ttl_minutes * 60_000).toISOString() }
+      : { moderation: action === "reject" ? "rejected" : "removed" };
+  await db().from("messages").update(patch).eq("id", messageId).eq("event_id", ev.id).is("media_id", null);
+  await db().from("audit_logs").insert({ event_id: ev.id, actor_type: actor.startsWith("host") ? "host" : "admin", actor_id: actor, action: `note.${action}`, detail: { message: messageId } });
+}
