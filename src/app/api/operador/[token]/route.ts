@@ -29,7 +29,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ token: str
 const body = z.union([
   z.object({
     paused: z.boolean().optional(),
-    layout: z.enum(["auto", "full", "message", "mosaic", "gallery", "featured"]).optional(),
+    layout: z.enum(["auto", "chat", "full", "message", "mosaic", "gallery", "featured"]).optional(),
     featured_media_id: z.string().uuid().nullable().optional(),
     show_qr: z.boolean().optional(),
   }).strict(),

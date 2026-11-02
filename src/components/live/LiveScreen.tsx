@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
+import ChatFeed from "./ChatFeed";
 
 type Item = { id: string; url: string; width: number | null; height: number | null; featured: boolean; message: string | null };
 type Data = {
@@ -63,12 +64,8 @@ export default function LiveScreen({ slug, screenKey }: { slug: string; screenKe
   const layout = featured ? "featured" : data?.state.layout ?? "auto";
 
   // En modo automático se alterna: foto con mensaje cuando lo hay, mosaico cada cierto tiempo
-  const effective = useMemo(() => {
-    if (layout !== "auto") return layout;
-    if (current?.message) return "message";
-    if (items.length >= 6 && index % 7 === 6) return "mosaic";
-    return "full";
-  }, [layout, current, items.length, index]);
+  // El diseño principal es la conversación; los demás se eligen desde el panel
+  const effective = useMemo(() => (layout === "auto" ? "chat" : layout), [layout]);
 
   async function goFullscreen() {
     await document.documentElement.requestFullscreen?.().catch(() => undefined);
@@ -86,6 +83,10 @@ export default function LiveScreen({ slug, screenKey }: { slug: string; screenKe
           <h1 className="mt-4 text-[5vw] leading-none">{data.event.name}</h1>
           <p className="mt-6 text-[1.8vw] text-blanco/70">Escanea el código y comparte tus fotos en esta pantalla</p>
         </div>
+      )}
+
+      {current && effective === "chat" && (
+        <ChatFeed items={items} seconds={seconds} paused={paused} eventName={data?.event.name ?? ""} />
       )}
 
       {current && effective === "mosaic" && (
@@ -133,7 +134,7 @@ export default function LiveScreen({ slug, screenKey }: { slug: string; screenKe
       )}
 
       {offline && <span className="absolute left-[1.5vw] top-[1.5vh] h-[0.6vw] w-[0.6vw] rounded-full bg-champagne/80" title="Reconectando" />}
-      <style>{`@keyframes fade{from{opacity:0}to{opacity:1}} @keyframes drift{from{transform:scale(1.04)}to{transform:scale(1.0)}}`}</style>
+      <style>{`@keyframes fade{from{opacity:0}to{opacity:1}} @keyframes drift{from{transform:scale(1.04)}to{transform:scale(1.0)}} @keyframes bubble{from{opacity:0;transform:translateY(6vh) scale(0.96)}to{opacity:1;transform:none}}`}</style>
     </main>
   );
 }

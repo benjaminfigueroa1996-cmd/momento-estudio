@@ -2,7 +2,7 @@ import { db, audit } from "@/lib/db";
 import { json, fail } from "@/lib/guard";
 
 /**
- * Tarea programada (Vercel Cron, cada hora). Idempotente: se puede ejecutar varias veces sin efectos dobles.
+ * Tarea programada (Vercel Cron, diaria: el plan gratuito no permite más). Idempotente: se puede ejecutar varias veces sin efectos dobles.
  * - Marca como fallidas las cargas que quedaron a medias hace más de 24 h (no borra nada).
  * - Limpia contadores de límite de solicitudes viejos.
  * - Informa eventos cuyo plazo de retención venció. La eliminación definitiva NO es automática:

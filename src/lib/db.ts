@@ -3,16 +3,18 @@ import { createClient } from "@supabase/supabase-js";
 import { env } from "./env";
 
 // Cliente con clave de servicio: solo en el servidor, siempre filtrando por event_id.
-let client: ReturnType<typeof createClient> | null = null;
+// Sin tipos generados de la base: el cliente acepta cualquier tabla (evita el tipo "never").
+const makeClient = () =>
+  createClient<any>(env.supabaseUrl(), env.supabaseService(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+let client: ReturnType<typeof makeClient> | null = null;
 export function db() {
   if (!client) {
-    client = createClient(env.supabaseUrl(), env.supabaseService(), {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    client = makeClient();
   }
   return client;
 }
-
 export type EventRow = {
   id: string;
   slug: string;
