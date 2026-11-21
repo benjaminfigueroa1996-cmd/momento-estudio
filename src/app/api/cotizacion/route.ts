@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { quoteSchema } from "@/lib/schemas";
 import { json, fail, rateLimit } from "@/lib/guard";
+import { brandedEmail, sendEmail } from "@/lib/email";
+import { env } from "@/lib/env";
 
 export async function POST(req: Request) {
   if (!(await rateLimit("quote", 5, 3600))) return fail("Ya recibimos varias solicitudes desde esta conexión. Intenta más tarde.", 429);
@@ -22,19 +24,29 @@ export async function POST(req: Request) {
   const { error } = await db().from("quote_requests").insert(row);
   if (error) return fail("No pudimos guardar tu solicitud. Intenta nuevamente.", 500);
 
-  // Aviso por correo cuando se configure RESEND_API_KEY y COMMERCIAL_EMAIL
-  if (process.env.RESEND_API_KEY && process.env.COMMERCIAL_EMAIL) {
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: `Momento Estudio <${process.env.COMMERCIAL_EMAIL}>`,
-        to: [process.env.COMMERCIAL_EMAIL],
-        reply_to: q.email,
-        subject: `Nueva cotización: ${q.event_type} · ${q.name}`,
-        text: Object.entries(row).map(([k, v]) => `${k}: ${v ?? "-"}`).join("\n"),
+  // Correos en español con la marca (requiere RESEND_API_KEY y COMMERCIAL_EMAIL)
+  const fecha = row.event_date ? new Date(`${row.event_date}T12:00:00`).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" }) : "";
+  const detalle: [string, string][] = [
+    ["Nombre", row.name], ["Correo", row.email], ["Teléfono", row.phone ?? ""], ["Tipo de evento", row.event_type],
+    ["Fecha", fecha], ["Lugar", row.location ?? ""], ["Invitados", row.guests ? String(row.guests) : ""], ["Comentarios", row.comments ?? ""],
+  ];
+  const texto = detalle.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n");
+  if (process.env.COMMERCIAL_EMAIL) {
+    // Aviso interno
+    await sendEmail([process.env.COMMERCIAL_EMAIL], `Nueva cotización: ${row.event_type} · ${row.name}`,
+      brandedEmail({ title: "Nueva solicitud de cotización", paragraphs: ["Llegó una solicitud desde el sitio. Responde directamente a este correo para escribirle."], rows: detalle,
+        cta: { label: "Ver en el panel", url: `${env.siteUrl()}/admin/cotizaciones` } }),
+      texto, row.email);
+    // Confirmación al cliente
+    await sendEmail([row.email], "Recibimos tu solicitud · Momento Estudio",
+      brandedEmail({
+        preheader: "Te responderemos pronto con una propuesta a medida.",
+        title: `¡Gracias, ${row.name.split(" ")[0]}!`,
+        paragraphs: ["Recibimos tu solicitud de cotización. Te escribiremos pronto con una propuesta a medida para tu evento.", "Este es el resumen de lo que nos enviaste:"],
+        rows: detalle.filter(([k]) => k !== "Nombre" && k !== "Correo"),
+        footnote: "Si quieres agregar algo, solo responde este correo.",
       }),
-    }).catch(() => undefined);
+      `Hola ${row.name}, recibimos tu solicitud de cotización. Te escribiremos pronto.\n\n${texto}`, process.env.COMMERCIAL_EMAIL);
   }
   return json({ ok: true });
 }
