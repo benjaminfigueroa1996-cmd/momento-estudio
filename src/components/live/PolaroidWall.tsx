@@ -7,7 +7,7 @@ export type WallPhoto = { kind: "photo"; id: string; url: string; width: number 
 export type WallNote = { kind: "note"; id: string; body: string; at: string; playedAt: string | null };
 export type WallCard = WallPhoto | WallNote;
 
-type Floating = { card: WallCard; lane: number; t0: number; x: number; r: number; w: number; h: number; fresh: boolean };
+type Floating = { card: WallCard; lane: number; t0: number; x: number; r: number; w: number; h: number; fresh: boolean; side: "left" | "right"; tone: number };
 
 /**
  * Muro de recuerdos que sube: cada foto o mensaje entra por abajo, sube lentamente y sale por arriba.
@@ -37,6 +37,7 @@ export default function PolaroidWall({
   const lastSpawn = useRef<Floating | null>(null);
   const nextStagger = useRef(0.5);
   const restored = useRef(false);
+  const noteCount = useRef(0);
 
   const lanesFor = (W: number, H: number) => {
     if (!W || !H) return orient === "portrait" ? 2 : 3;
@@ -70,7 +71,10 @@ export default function PolaroidWall({
     // altura estimada hasta medirla en pantalla
     const ratio = card.kind === "photo" && card.width && card.height ? card.width / card.height : 0.8;
     const h = card.kind === "photo" ? w * (0.05 + 0.9 / (ratio < 0.9 ? 0.8 : ratio > 1.15 ? 1.25 : 1) + 0.2) : w * 0.85;
-    return { card, lane, t0, x, r, w, h, fresh };
+    // mensajes como chat: alternan lado y color de avatar, sin inclinación
+    const isNote = card.kind === "note";
+    const side: "left" | "right" = isNote ? (noteCount.current++ % 2 === 0 ? "left" : "right") : "left";
+    return { card, lane, t0, x, r: isNote ? 0 : r, w, h, fresh, side, tone: Math.floor(Math.random() * AVATAR_TONES.length) };
   };
 
   // Al recargar la pantalla: recuperar lo que estaba subiendo, en la altura que corresponde
@@ -172,7 +176,7 @@ export default function PolaroidWall({
           className="absolute left-0 top-0 will-change-transform"
           style={{ width: f.w, transform: `translate3d(${f.x}px, ${size.H + 12}px, 0) rotate(${f.r}deg)` }}
         >
-          {f.card.kind === "photo" ? <Polaroid card={f.card} fresh={f.fresh} /> : <NoteCard card={f.card} />}
+          {f.card.kind === "photo" ? <Polaroid card={f.card} fresh={f.fresh} /> : <ChatBubble card={f.card} side={f.side} tone={f.tone} />}
         </div>
       ))}
       <style>{`
@@ -203,14 +207,26 @@ function Polaroid({ card, fresh }: { card: WallPhoto; fresh: boolean }) {
   );
 }
 
-/** Tarjeta de mensaje sin foto, con una cinta de papel arriba. */
-function NoteCard({ card }: { card: WallNote }) {
+const AVATAR_TONES = ["#B79A70", "#9C8B7A", "#C9A99A", "#8FA08C", "#A7967F", "#B48F86"];
+
+/** Mensaje sin foto como chat: avatar que alterna de lado y burbuja con hora y doble visto. */
+function ChatBubble({ card, side, tone }: { card: WallNote; side: "left" | "right"; tone: number }) {
   const len = card.body.length;
+  const left = side === "left";
+  const time = card.at ? new Date(card.at).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "";
   return (
-    <div className="relative mx-[4%] pt-[4cqw] [container-type:inline-size]">
-      <span aria-hidden className="absolute left-1/2 top-0 z-10 h-[9cqw] w-[38cqw] -translate-x-1/2 rotate-[-3deg] bg-[#E8DFD3]/85 shadow-sm" />
-      <div className="flex min-h-[70cqw] items-center justify-center bg-[#F4ECDF] px-[9cqw] py-[11cqw] text-center shadow-[0_1.4vmin_3.5vmin_rgba(0,0,0,0.4)]">
-        <p className={`font-hand leading-[1.08] text-[#2b2a27] ${len < 40 ? "text-[13cqw]" : len < 100 ? "text-[10cqw]" : "text-[8cqw]"}`}>{card.body}</p>
+    <div className={`flex items-end gap-[3cqw] [container-type:inline-size] ${left ? "" : "flex-row-reverse"}`}>
+      <span aria-hidden className="flex h-[15cqw] w-[15cqw] shrink-0 items-center justify-center rounded-full shadow-[0_0.6vmin_1.6vmin_rgba(0,0,0,0.35)]" style={{ background: AVATAR_TONES[tone % AVATAR_TONES.length] }}>
+        <svg viewBox="0 0 24 24" className="h-[9cqw] w-[9cqw]" fill="#FFFEFC" opacity=".92"><circle cx="12" cy="8.5" r="4.2" /><path d="M3.8 21c.9-4.4 4.2-6.8 8.2-6.8s7.3 2.4 8.2 6.8z" /></svg>
+      </span>
+      <div
+        className={`relative max-w-[80cqw] px-[5.5cqw] pb-[3.2cqw] pt-[4.2cqw] shadow-[0_1vmin_2.8vmin_rgba(0,0,0,0.38)] ${left ? "rounded-[6cqw] rounded-bl-[1.2cqw] bg-[#FFFEFC]" : "rounded-[6cqw] rounded-br-[1.2cqw] bg-[#EFE4D2]"}`}
+      >
+        <p className={`text-[#242321] leading-[1.28] ${len < 40 ? "text-[8.2cqw]" : len < 110 ? "text-[6.6cqw]" : "text-[5.4cqw]"}`}>{card.body}</p>
+        <span className="mt-[1.6cqw] flex items-center justify-end gap-[1cqw] text-[3.8cqw] text-[#8C8780]">
+          {time}
+          <svg viewBox="0 0 18 12" className="h-[3.6cqw] w-[5.4cqw]" fill="none" stroke="#B79A70" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6.5l3.2 3.2L11 2.5M7 9.7l.4.4L15.5 2.5" /></svg>
+        </span>
       </div>
     </div>
   );

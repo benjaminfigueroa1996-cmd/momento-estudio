@@ -9,7 +9,7 @@ export async function supabaseUser() {
   return createServerClient(env.supabaseUrl(), env.supabaseAnon(), {
     cookies: {
       getAll: () => store.getAll(),
-      setAll: (list) => list.forEach(({ name, value, options }) => store.set(name, value, options)),
+      setAll: (list: { name: string; value: string; options?: Record<string, unknown> }[]) => list.forEach(({ name, value, options }) => store.set(name, value, options)),
     },
   });
 }
