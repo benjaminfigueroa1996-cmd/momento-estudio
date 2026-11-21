@@ -8,9 +8,11 @@ import { useState } from "react";
  * carga diferida fuera de pantalla). Ver docs/fotos-del-sitio.md para qué foto va en cada número.
  */
 export default function Photo({
-  n, alt, className = "", priority = false, sizes = "(max-width: 768px) 100vw, 50vw", position = "center",
-}: { n: number; alt: string; className?: string; priority?: boolean; sizes?: string; position?: string }) {
+  n, alt, className = "", priority = false, sizes = "(max-width: 768px) 100vw, 50vw", position = "center", optional = false,
+}: { n: number; alt: string; className?: string; priority?: boolean; sizes?: string; position?: string; optional?: boolean }) {
   const [ok, setOk] = useState(true);
+  // "optional": si la foto aún no existe, no se muestra nada (sin bloques vacíos)
+  if (optional && !ok) return null;
   return (
     <div className={`${/\b(absolute|fixed)\b/.test(className) ? "" : "relative"} overflow-hidden bg-[linear-gradient(135deg,#E8DFD3,#d4c5b0)] ${className}`}>
       {ok && (

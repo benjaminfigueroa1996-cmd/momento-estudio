@@ -1,80 +1,55 @@
 import Link from "next/link";
-import Photo from "@/components/site/Photo";
 import Reveal from "@/components/site/Reveal";
 import QuoteForm from "@/components/site/QuoteForm";
+import DemoWall from "@/components/site/DemoWall";
+import PhoneMock from "@/components/site/PhoneMock";
 import { steps, faqs } from "@/content/site";
 
-// Fotos en public/fotos/01.jpg … 18.jpg — ver docs/fotos-del-sitio.md (qué va en cada una, créditos y licencias)
-const Eyebrow = ({ children, light = false }: { children: React.ReactNode; light?: boolean }) => (
-  <p className={`text-[12px] uppercase tracking-[0.32em] ${light ? "text-champagne" : "text-champagne"}`}>{children}</p>
+// Portada centrada en el producto: el muro en pantalla, el teléfono del invitado y el iPad.
+// Las ilustraciones usan luces de fiesta abstractas; cuando existan fotos reales de eventos se suman en public/fotos.
+const Eyebrow = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-[12px] uppercase tracking-[0.32em] text-champagne">{children}</p>
 );
-
-function Polaroid({ n, alt, caption, rotate, className = "" }: { n: number; alt: string; caption?: string; rotate: number; className?: string }) {
-  return (
-    <figure className={`bg-[#FBF8F2] p-3 pb-0 shadow-[0_18px_40px_rgba(0,0,0,0.22)] transition-transform duration-500 ease-suave hover:rotate-0 hover:scale-[1.03] ${className}`} style={{ transform: `rotate(${rotate}deg)` }}>
-      <Photo n={n} alt={alt} sizes="(max-width: 768px) 50vw, 22vw" className="aspect-[4/5]" />
-      <figcaption className="flex h-16 items-center justify-center px-2 text-center font-hand text-[22px] leading-none text-[#2b2a27]">{caption}</figcaption>
-    </figure>
-  );
-}
 
 export default function Home() {
   return (
     <main className="overflow-x-clip">
-      {/* Portada */}
-      <section className="relative h-[calc(100dvh-3.5rem)] min-h-[600px] w-full">
-        <Photo n={1} alt="Invitados de un matrimonio sacándose una selfie en la fiesta" priority sizes="100vw" className="absolute inset-0" />
-        <div className="absolute inset-0 bg-gradient-to-t from-carbon/85 via-carbon/30 to-carbon/5" />
-        <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-end px-6 pb-16 text-blanco md:pb-24">
-          <Eyebrow light>Momento Estudio</Eyebrow>
-          <h1 className="mt-5 max-w-4xl text-[46px] leading-[1.02] md:text-[92px]">Los recuerdos de tu evento, desde todos los ángulos.</h1>
-          <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-blanco/80 md:text-[19px]">Fotos y mensajes de tus invitados en una pantalla en vivo, un álbum compartido y un archivo privado para siempre.</p>
-          <div className="mt-10 flex flex-wrap gap-3">
-            <Link href="/contacto" className="btn bg-blanco text-carbon hover:bg-marfil">Cotiza tu evento</Link>
-            <Link href="/como-funciona" className="btn border border-blanco/40 text-blanco hover:border-blanco">Conoce cómo funciona</Link>
+      {/* Portada: el muro en movimiento */}
+      <section className="relative bg-carbon text-marfil">
+        <div aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_120%,rgba(183,154,112,0.28),transparent_60%)]" />
+        <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 pb-20 pt-16 md:grid-cols-[0.9fr_1.1fr] md:pb-28 md:pt-24">
+          <div>
+            <Eyebrow>Fotos y mensajes en vivo para eventos</Eyebrow>
+            <h1 className="mt-5 text-[46px] leading-[1.02] md:text-[76px]">Los recuerdos de tu evento, desde todos los ángulos.</h1>
+            <p className="mt-6 max-w-md text-[17px] leading-relaxed text-marfil/75">Tus invitados escanean un código, comparten sus fotos y dedicatorias, y aparecen al instante en la pantalla de la fiesta. Después, todo queda guardado para ustedes.</p>
+            <div className="mt-10 flex flex-wrap gap-3">
+              <Link href="/contacto" className="btn bg-blanco text-carbon hover:bg-marfil">Cotiza tu evento</Link>
+              <Link href="#como-funciona" className="btn border border-marfil/30 text-marfil hover:border-marfil">Cómo funciona</Link>
+            </div>
           </div>
+          <Reveal>
+            <DemoWall className="aspect-[16/10]" />
+            <p className="mt-4 text-center text-[12px] text-marfil/45">Así se ve la pantalla durante la fiesta</p>
+          </Reveal>
         </div>
       </section>
 
       {/* Declaración */}
       <section className="mx-auto max-w-4xl px-6 py-28 text-center md:py-36">
         <Reveal>
-          <p className="font-serif text-[30px] leading-[1.25] md:text-[46px]">
-            Cada invitado ve la fiesta desde un lugar distinto. Nosotros reunimos todas esas miradas en un solo recuerdo.
-          </p>
+          <p className="font-serif text-[30px] leading-[1.25] md:text-[46px]">Cada invitado vive la fiesta desde un lugar distinto. Nosotros reunimos todas esas miradas en un solo recuerdo.</p>
         </Reveal>
       </section>
 
-      {/* Matrimonios */}
-      <section id="matrimonios" className="mx-auto max-w-6xl px-6 pb-28 md:pb-36">
-        <div className="grid items-end gap-10 md:grid-cols-[1fr_1.1fr] md:gap-16">
-          <Reveal>
-            <Eyebrow>Matrimonios</Eyebrow>
-            <h2 className="mt-4 text-[44px] leading-[1.04] md:text-[64px]">El día más importante, contado por todos.</h2>
-            <p className="mt-6 max-w-md text-[18px] leading-relaxed text-carbon/70">Del brindis a la pista de baile, las fotos de tus invitados llegan a la pantalla con sus dedicatorias y quedan guardadas para ustedes.</p>
-          </Reveal>
-          <Reveal delay={120}>
-            <Photo n={2} alt="Novios celebrando junto a sus invitados" sizes="(max-width: 768px) 100vw, 55vw" className="aspect-[4/5] rounded-3xl md:aspect-[5/6]" />
-          </Reveal>
-        </div>
-        <div className="mt-5 grid grid-cols-12 gap-5">
-          <Reveal className="col-span-12 md:col-span-7"><Photo n={3} alt="Invitados brindando con copas" sizes="(max-width: 768px) 100vw, 60vw" className="aspect-[16/10] rounded-3xl" /></Reveal>
-          <Reveal delay={120} className="col-span-12 md:col-span-5"><Photo n={4} alt="Pareja bailando en la fiesta" sizes="(max-width: 768px) 100vw, 40vw" className="aspect-[16/10] rounded-3xl md:aspect-auto md:h-full" /></Reveal>
-        </div>
-      </section>
-
-      {/* Cómo funciona */}
+      {/* Cómo funciona: el teléfono */}
       <section id="como-funciona" className="border-y border-carbon/10 bg-blanco">
-        <div className="mx-auto grid max-w-6xl gap-14 px-6 py-24 md:grid-cols-[0.9fr_1.1fr] md:py-32">
-          <Reveal className="grid grid-cols-2 gap-4 self-start">
-            <Photo n={5} alt="Invitada escaneando el código QR con su teléfono" sizes="(max-width: 768px) 50vw, 22vw" className="aspect-[3/4] rounded-2xl" />
-            <Photo n={6} alt="Amigas compartiendo fotos desde sus teléfonos" sizes="(max-width: 768px) 50vw, 22vw" className="mt-14 aspect-[3/4] rounded-2xl" />
-          </Reveal>
+        <div className="mx-auto grid max-w-6xl items-center gap-16 px-6 py-24 md:grid-cols-[0.8fr_1.2fr] md:py-32">
+          <Reveal><PhoneMock /></Reveal>
           <div>
-            <Reveal><Eyebrow>Cómo funciona</Eyebrow><h2 className="mt-4 text-[40px] leading-[1.05] md:text-[56px]">Un código, cero aplicaciones.</h2></Reveal>
+            <Reveal><Eyebrow>Cómo funciona</Eyebrow><h2 className="mt-4 text-[40px] leading-[1.05] md:text-[56px]">Un código. Cero aplicaciones.</h2></Reveal>
             <div className="mt-10 space-y-8">
               {steps.map((s, i) => (
-                <Reveal key={s.title} delay={i * 100}>
+                <Reveal key={s.title} delay={i * 90}>
                   <div className="grid grid-cols-[48px_1fr] gap-4">
                     <span className="font-serif text-[40px] leading-none text-champagne">{i + 1}</span>
                     <div><h3 className="text-[22px] leading-tight">{s.title}</h3><p className="mt-2 text-[15px] leading-relaxed text-carbon/70">{s.body}</p></div>
@@ -86,80 +61,131 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pantalla en vivo: muro de polaroids */}
+      {/* Pantalla en vivo: características */}
       <section className="bg-carbon text-marfil">
-        <div className="mx-auto max-w-6xl px-6 pt-24 md:pt-32">
+        <div className="mx-auto max-w-6xl px-6 py-24 md:py-32">
           <Reveal className="max-w-2xl">
-            <Eyebrow light>Pantalla en vivo</Eyebrow>
-            <h2 className="mt-4 text-[44px] leading-[1.05] md:text-[68px]">Un muro de recuerdos que se arma durante la fiesta.</h2>
-            <p className="mt-6 text-[18px] leading-relaxed text-marfil/70">Cada foto llega como una instantánea recién revelada, con el mensaje escrito por quien la tomó. Cada recuerdo aparece una vez y da paso al siguiente.</p>
+            <Eyebrow>Pantalla en vivo</Eyebrow>
+            <h2 className="mt-4 text-[44px] leading-[1.05] md:text-[64px]">Un muro de recuerdos que se arma durante la fiesta.</h2>
           </Reveal>
-        </div>
-        <Reveal delay={120} className="mx-auto max-w-6xl px-6 py-16 md:py-24">
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
-            <Polaroid n={14} alt="Novia riendo con sus amigas" caption="¡Que viva el amor!" rotate={-4} />
-            <Polaroid n={15} alt="Brindis entre amigos" caption="Los queremos mucho" rotate={3} className="md:mt-10" />
-            <Polaroid n={16} alt="Abrazo en la pista de baile" rotate={-2} />
-            <Polaroid n={17} alt="Selfie de un grupo de invitados" caption="Por muchos años de felicidad" rotate={4} className="md:mt-8" />
+          <div className="mt-14 grid gap-5 md:grid-cols-3">
+            {[
+              ["Fotos instantáneas", "Cada foto llega como una polaroid recién revelada, con la dedicatoria escrita a mano en el marco."],
+              ["Mensajes como en un chat", "Los saludos sin foto aparecen como conversación, con avatares que se alternan de lado."],
+              ["Cada recuerdo, una vez", "Las fotos suben lentamente y dan paso a las nuevas. Nada se repite ni se acumula."],
+            ].map(([t, b], i) => (
+              <Reveal key={t} delay={i * 100} className="rounded-3xl border border-marfil/10 bg-white/[0.03] p-8">
+                <h3 className="text-[24px] leading-tight">{t}</h3>
+                <p className="mt-3 text-[15px] leading-relaxed text-marfil/65">{b}</p>
+              </Reveal>
+            ))}
           </div>
-        </Reveal>
-        <div className="mx-auto max-w-6xl px-6 pb-24 md:pb-32">
-          <Reveal><Photo n={7} alt="Invitados mirando la pantalla con sus fotos durante el evento" sizes="(max-width: 1200px) 100vw, 1150px" className="aspect-[21/9] rounded-3xl" /></Reveal>
+          <Reveal className="mt-5 grid gap-5 md:grid-cols-[1.4fr_1fr]">
+            <div className="rounded-3xl border border-marfil/10 bg-white/[0.03] p-8">
+              <h3 className="text-[24px] leading-tight">Se adapta a cualquier pantalla</h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-marfil/65">Proyector, televisor vertical o pantalla panorámica: el muro cambia sus columnas solo. El código QR queda siempre visible para que nadie se quede fuera.</p>
+              <div className="mt-8 flex items-end gap-4" aria-hidden>
+                <span className="h-16 w-28 rounded-md border-2 border-marfil/40" />
+                <span className="h-24 w-14 rounded-md border-2 border-marfil/40" />
+                <span className="h-16 w-16 rounded-md border-2 border-marfil/40" />
+                <span className="h-12 w-40 rounded-md border-2 border-marfil/40" />
+              </div>
+            </div>
+            <div className="rounded-3xl bg-marfil p-8 text-carbon">
+              <h3 className="text-[24px] leading-tight">Ustedes deciden qué se ve</h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-carbon/70">Aprueban antes de mostrar, retiran lo que no corresponde y destacan sus favoritas desde el teléfono.</p>
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* Eventos corporativos */}
-      <section id="corporativos" className="mx-auto max-w-6xl px-6 py-28 md:py-36">
-        <div className="grid gap-5 md:grid-cols-12">
-          <Reveal className="md:col-span-5 md:pr-6">
-            <Eyebrow>Eventos corporativos</Eyebrow>
-            <h2 className="mt-4 text-[40px] leading-[1.05] md:text-[56px]">Tu equipo, en el centro de la marca.</h2>
-            <p className="mt-6 text-[17px] leading-relaxed text-carbon/70">Lanzamientos, aniversarios y celebraciones de fin de año. Las fotos de los asistentes en pantalla, con el logo de tu empresa, y un archivo listo para comunicaciones internas.</p>
-            <Photo n={10} alt="Colegas conversando y brindando en un cóctel" sizes="(max-width: 768px) 100vw, 35vw" className="mt-10 aspect-[4/5] rounded-3xl" />
+      {/* Para cada evento */}
+      <section id="eventos" className="mx-auto max-w-6xl px-6 py-28 md:py-36">
+        <Reveal><Eyebrow>Para cada celebración</Eyebrow><h2 className="mt-4 max-w-3xl text-[40px] leading-[1.05] md:text-[56px]">Matrimonios, empresas y fiestas.</h2></Reveal>
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          <Reveal className="flex flex-col overflow-hidden rounded-3xl bg-blanco">
+            <div className="relative h-56 overflow-hidden bg-carbon">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_40%_120%,rgba(183,154,112,0.4),transparent_65%)]" />
+              {[["luz-1", "-6deg", "12%", "22%"], ["luz-4", "4deg", "40%", "14%"], ["luz-6", "-2deg", "66%", "26%"]].map(([img, r, l, t]) => (
+                <figure key={img} className="absolute w-[30%] bg-[#FBF8F2] p-[2%] pb-[7%] shadow-xl" style={{ left: l, top: t, transform: `rotate(${r})` }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/ilustraciones/${img}.jpg`} alt="" className="aspect-[4/5] w-full object-cover" />
+                </figure>
+              ))}
+            </div>
+            <div className="p-8">
+              <h3 className="text-[28px] leading-tight">Matrimonios</h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-carbon/70">Del brindis a la pista de baile, las dedicatorias de los invitados en pantalla y un archivo privado para los novios.</p>
+            </div>
           </Reveal>
-          <div className="grid gap-5 md:col-span-7">
-            <Reveal delay={120}><Photo n={8} alt="Cóctel corporativo con asistentes conversando" sizes="(max-width: 768px) 100vw, 55vw" className="aspect-[4/3] rounded-3xl" /></Reveal>
-            <Reveal delay={200}><Photo n={9} alt="Foto grupal de un equipo de trabajo en un evento" sizes="(max-width: 768px) 100vw, 55vw" className="aspect-[16/9] rounded-3xl" /></Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* Fiestas y celebraciones */}
-      <section id="fiestas" className="bg-[#1b1a18] text-marfil">
-        <Reveal><Photo n={11} alt="Público disfrutando de un concierto con luces cálidas" sizes="100vw" className="aspect-[16/9] w-full md:aspect-[21/8]" /></Reveal>
-        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-24 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-32">
-          <Reveal>
-            <Eyebrow light>Fiestas, conciertos y cumpleaños</Eyebrow>
-            <h2 className="mt-4 text-[40px] leading-[1.05] md:text-[60px]">Toda la energía de la noche, en una sola pantalla.</h2>
-            <p className="mt-6 max-w-md text-[17px] leading-relaxed text-marfil/70">Selfies, brindis y momentos que nadie más vio. Tus invitados los comparten al instante y la fiesta se ve a sí misma.</p>
+          <Reveal delay={100} className="flex flex-col overflow-hidden rounded-3xl bg-blanco">
+            <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#0e203a,#1c4e8c)]">
+              <div className="w-[70%] rounded-lg border-4 border-[#0a0a0a] bg-[linear-gradient(135deg,#123059,#2a6aad)] p-3 shadow-2xl">
+                <div className="flex items-center gap-2 text-[10px] font-bold tracking-wide text-white"><span className="rounded bg-white px-1 text-[#123059]">E</span>EMPRESA</div>
+                <div className="mt-2 grid grid-cols-3 gap-1.5">
+                  {["luz-3", "luz-5", "luz-8"].map((img) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={img} src={`/ilustraciones/${img}.jpg`} alt="" className="aspect-square w-full border-2 border-[#FBF8F2] object-cover" />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-8">
+              <h3 className="text-[28px] leading-tight">Eventos corporativos</h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-carbon/70">Con el logo y el fondo de tu marca. Lanzamientos, aniversarios y fiestas de fin de año, con un archivo listo para comunicaciones internas.</p>
+            </div>
           </Reveal>
-          <Reveal delay={120} className="grid grid-cols-2 gap-4">
-            <Photo n={12} alt="Amigos sacándose una selfie de noche" sizes="(max-width: 768px) 50vw, 25vw" className="aspect-[3/4] rounded-2xl" />
-            <Photo n={13} alt="Brindis en una celebración de cumpleaños" sizes="(max-width: 768px) 50vw, 25vw" className="mt-12 aspect-[3/4] rounded-2xl" />
+          <Reveal delay={200} className="flex flex-col overflow-hidden rounded-3xl bg-blanco">
+            <div className="relative h-56 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/ilustraciones/luz-5.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute inset-x-6 bottom-6 space-y-2">
+                <p className="ml-auto w-fit rounded-2xl rounded-br-sm bg-[#EFE4D2] px-3 py-2 text-[13px] text-carbon shadow-lg">¡Feliz cumpleaños, Sofi! 🎉</p>
+                <p className="w-fit rounded-2xl rounded-bl-sm bg-blanco px-3 py-2 text-[13px] text-carbon shadow-lg">¡Qué noche! 🥂</p>
+              </div>
+            </div>
+            <div className="p-8">
+              <h3 className="text-[28px] leading-tight">Fiestas y cumpleaños</h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-carbon/70">Selfies, brindis y saludos que llegan a la pantalla al instante. La fiesta se ve a sí misma.</p>
+            </div>
           </Reveal>
         </div>
       </section>
 
       {/* Estación iPad y archivo privado */}
-      <section className="mx-auto grid max-w-6xl gap-5 px-6 py-28 md:grid-cols-2 md:py-36">
+      <section className="mx-auto grid max-w-6xl gap-5 px-6 pb-28 md:grid-cols-2 md:pb-36">
         <Reveal className="flex flex-col overflow-hidden rounded-3xl bg-blanco">
           <div className="p-10 pb-0">
             <Eyebrow>Estación iPad</Eyebrow>
             <h3 className="mt-4 text-[34px] leading-tight">Una dedicatoria escrita a mano.</h3>
             <p className="mt-4 text-[16px] leading-relaxed text-carbon/70">Con Apple Pencil, los invitados escriben y dibujan sobre las fotos. El original siempre se conserva.</p>
           </div>
-          <Photo n={18} alt="Invitada escribiendo una dedicatoria con Apple Pencil" sizes="(max-width: 768px) 100vw, 45vw" className="mt-10 aspect-[4/3]" />
+          <div className="mt-10 flex justify-center bg-beige/50 px-10 pb-0 pt-10">
+            <div className="w-full max-w-[380px] rounded-t-[26px] border-[10px] border-b-0 border-[#141312] bg-[#141312]">
+              <div className="relative overflow-hidden rounded-t-[16px]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/ilustraciones/luz-2.jpg" alt="" className="aspect-[4/3] w-full object-cover" />
+                <p className="absolute bottom-[12%] left-[10%] -rotate-6 font-hand text-[34px] leading-none text-blanco drop-shadow">¡Los queremos!</p>
+                <svg viewBox="0 0 100 30" className="absolute right-[10%] top-[14%] w-[26%]" fill="none" stroke="#FFFEFC" strokeWidth="2.2" strokeLinecap="round"><path d="M10 18c6-12 16-12 14 0-2 10-14 6-6-4 6-6 14 2 10 8" /><path d="M58 12c8 2 10 10 4 12s-10-6-2-10 18 2 20 8" /></svg>
+              </div>
+            </div>
+          </div>
         </Reveal>
-        <Reveal delay={120} className="flex flex-col justify-between rounded-3xl bg-carbon p-10 text-marfil">
+        <Reveal delay={100} className="flex flex-col justify-between rounded-3xl bg-carbon p-10 text-marfil">
           <div>
-            <Eyebrow light>Archivo privado</Eyebrow>
+            <Eyebrow>Archivo privado</Eyebrow>
             <h3 className="mt-4 text-[34px] leading-tight">Todo queda para ustedes.</h3>
             <p className="mt-4 text-[16px] leading-relaxed text-marfil/70">Cada foto y cada mensaje, incluso los que solo pasaron por la pantalla, ordenados y listos para descargar.</p>
           </div>
-          <ul className="mt-10 space-y-3 border-t border-marfil/15 pt-8 text-[15px] text-marfil/80">
+          <div className="mt-10 grid grid-cols-4 gap-2" aria-hidden>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={n} src={`/ilustraciones/luz-${n}.jpg`} alt="" loading="lazy" className="aspect-square w-full rounded-md object-cover opacity-90" />
+            ))}
+          </div>
+          <ul className="mt-8 space-y-2 border-t border-marfil/15 pt-6 text-[15px] text-marfil/80">
             <li>Fotos de los invitados y del fotógrafo oficial</li>
             <li>Mensajes y dedicatorias</li>
-            <li>Fotos intervenidas en el iPad</li>
             <li>Descarga completa en un archivo ZIP</li>
           </ul>
         </Reveal>
@@ -188,7 +214,7 @@ export default function Home() {
             <h2 className="text-[44px] leading-[1.05] md:text-[60px]">Cotiza tu evento</h2>
             <p className="mt-6 max-w-sm text-[18px] leading-relaxed text-marfil/70">Matrimonios, eventos corporativos, cumpleaños y fiestas. Cuéntanos sobre tu celebración y te enviamos una propuesta a medida.</p>
           </Reveal>
-          <Reveal delay={120} className="rounded-3xl bg-marfil p-6 text-carbon md:p-10"><QuoteForm /></Reveal>
+          <Reveal delay={100} className="rounded-3xl bg-marfil p-6 text-carbon md:p-10"><QuoteForm /></Reveal>
         </div>
       </section>
     </main>
