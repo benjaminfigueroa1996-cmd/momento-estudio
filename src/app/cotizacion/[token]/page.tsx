@@ -5,7 +5,7 @@ import { formatCLP, type QuoteLine } from "@/lib/pricing";
 import PrintButton from "./PrintButton";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Cotización · Momento Estudio", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Cotización", robots: { index: false, follow: false } };
 
 type Row = {
   number: number; name: string; email: string; phone: string | null; event_type: string; event_date: string | null;
