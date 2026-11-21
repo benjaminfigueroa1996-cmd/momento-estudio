@@ -61,3 +61,12 @@ Los invitados pueden enviar solo un mensaje. Se guarda en `messages` sin `media_
 Es el modo automático de la pantalla. Cada foto entra como una instantánea con marco crema, ligeramente inclinada, con efecto de revelado, en posiciones de collage (dos filas en pantallas anchas, tres en verticales). Los mensajes de la foto van manuscritos en el marco (letra Caveat, licencia SIL OFL); los mensajes sin foto aparecen como tarjetas con cinta de papel.
 
 **Reproducción única:** al entrar una foto o un mensaje al muro, la pantalla lo registra en la base (`screen_played_at`). La API solo entrega lo no proyectado, más lo proyectado hace menos del tiempo de permanencia (para reconstruir el muro si se recarga la pantalla). Nada vuelve a reproducirse. Cada elemento permanece unas 7 veces el intervalo entre fotos (mínimo 45 s) o hasta que lo reemplaza una foto nueva; cuando no queda contenido, aparece la pantalla de espera.
+
+## Muro ascendente (versión 2)
+Las fotos y mensajes entran por abajo y suben lentamente de forma continua hasta salir por arriba, sin volver. Se ordenan en columnas según la proporción del escenario: 2 en pantallas altas, 3 en horizontales y 4 en ultra anchas. La velocidad base recorre la altura completa en el tiempo de permanencia del evento (mínimo 35 s) y aumenta hasta 2,5 veces si hay mucho contenido en cola. La animación usa un reloj propio que se detiene al pausar desde el panel.
+
+## Fondos de la pantalla por evento
+Se guardan en `events.theme`: `bg` (`calido`, `carbon`, `lino` o `imagen`), `overlay` (oscurecimiento de 0 a 0,85 para imágenes propias) y `bgKey` (imagen en R2). El fondo cálido es el predeterminado. Con "lino" los textos pasan a tonos oscuros. Para empresas se combina una imagen propia con el logo del evento.
+
+## Calidad de imagen en pantallas grandes
+El teléfono genera una versión para pantalla de hasta 3072 px (JPEG calidad 0,9, suavizado alto), suficiente para pantallas Full HD y 4K, donde cada polaroid ocupa una fracción de la pantalla. El original del teléfono se guarda siempre intacto para el archivo de los anfitriones. Las fotos reenviadas por WhatsApp llegan ya comprimidas y no se pueden recuperar.

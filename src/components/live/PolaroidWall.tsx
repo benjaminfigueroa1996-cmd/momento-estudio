@@ -7,130 +7,175 @@ export type WallPhoto = { kind: "photo"; id: string; url: string; width: number 
 export type WallNote = { kind: "note"; id: string; body: string; at: string; playedAt: string | null };
 export type WallCard = WallPhoto | WallNote;
 
-type Slot = { x: number; y: number; w: number; r: number }; // % del escenario, ancho en %, rotación en grados
-type Placed = { card: WallCard; slot: number; enteredAt: number; z: number; leaving: boolean; leftAt: number; fresh: boolean };
-
-// Posiciones del collage: dos filas en pantallas anchas, tres en verticales. Asimétricas pero equilibradas.
-const SLOTS: Record<"landscape" | "portrait" | "square", Slot[]> = {
-  landscape: [
-    { x: 1.5, y: 3, w: 21, r: -4 }, { x: 22.5, y: 1, w: 16, r: 3 }, { x: 38.5, y: 5, w: 23, r: -2 }, { x: 62, y: 1.5, w: 17, r: 4 },
-    { x: 80, y: 6, w: 18, r: -3 },
-    { x: 4, y: 50, w: 17, r: 3 }, { x: 21, y: 46, w: 22, r: -3 }, { x: 44, y: 51, w: 16, r: 2 }, { x: 60, y: 45, w: 21, r: -4 },
-    { x: 81, y: 52, w: 16, r: 3 },
-  ],
-  portrait: [
-    { x: 3, y: 1, w: 46, r: -3 }, { x: 51, y: 4, w: 44, r: 3 },
-    { x: 6, y: 34, w: 42, r: 2 }, { x: 50, y: 36, w: 46, r: -3 },
-    { x: 2, y: 67, w: 45, r: -2 }, { x: 51, y: 69, w: 42, r: 4 },
-  ],
-  square: [
-    { x: 2, y: 3, w: 31, r: -3 }, { x: 34, y: 1, w: 30, r: 2 }, { x: 66, y: 5, w: 31, r: -2 },
-    { x: 4, y: 51, w: 30, r: 3 }, { x: 35, y: 48, w: 31, r: -3 }, { x: 67, y: 52, w: 30, r: 2 },
-  ],
-};
+type Floating = { card: WallCard; lane: number; t0: number; x: number; r: number; w: number; h: number; fresh: boolean };
 
 /**
- * Muro de recuerdos instantáneos. Cada foto o mensaje entra UNA vez, con efecto de revelado,
- * permanece un tiempo y sale. Lo proyectado se informa al servidor y nunca se repite.
+ * Muro de recuerdos que sube: cada foto o mensaje entra por abajo, sube lentamente y sale por arriba.
+ * Se muestra UNA sola vez (se informa al servidor al entrar) y nunca vuelve.
+ * Columnas según la pantalla: 2 en pantallas altas, 3 en horizontales, 4 en ultra anchas.
  */
 export default function PolaroidWall({
-  cards, orient, step, dwell, paused, onPlayed, onEmpty,
+  cards, orient, dwell, paused, onPlayed, onEmpty,
 }: {
-  cards: WallCard[]; orient: Orient; step: number; dwell: number; paused: boolean;
+  cards: WallCard[]; orient: Orient; step?: number; dwell: number; paused: boolean;
   onPlayed: (c: WallCard[]) => void; onEmpty: (empty: boolean) => void;
 }) {
-  const kind = orient === "portrait" ? "portrait" : orient === "square" ? "square" : "landscape";
-  const slots = SLOTS[kind];
-  const [wall, setWall] = useState<Placed[]>([]);
-  const used = useRef(new Set<string>()); // nunca se vuelve a mostrar lo que ya entró
-  const z = useRef(1);
+  const box = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ W: 0, H: 0 });
+  const sizeRef = useRef(size);
+  const [wall, setWall] = useState<Floating[]>([]);
+  const wallRef = useRef<Floating[]>([]);
+  const els = useRef(new Map<string, HTMLDivElement>());
+  const used = useRef(new Set<string>());
   const cardsRef = useRef(cards);
   cardsRef.current = cards;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const onPlayedRef = useRef(onPlayed);
+  onPlayedRef.current = onPlayed;
+  const clock = useRef(performance.now() / 1000); // reloj que se detiene al pausar
+  const lastSpawn = useRef<Floating | null>(null);
+  const nextStagger = useRef(0.5);
   const restored = useRef(false);
 
-  // Al abrir la pantalla: reconstruir lo que estaba en el muro (proyectado hace poco), sin volver a "revelarlo"
+  const lanesFor = (W: number, H: number) => {
+    if (!W || !H) return orient === "portrait" ? 2 : 3;
+    const r = W / H;
+    return r < 0.95 ? 2 : r < 1.9 ? 3 : 4;
+  };
+
+  // Tamaño real del escenario
   useEffect(() => {
-    if (restored.current || !cards.length) return;
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => {
+      const s = { W: e.contentRect.width, H: e.contentRect.height };
+      sizeRef.current = s;
+      setSize(s);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const place = (card: WallCard, lane: number, t0: number, fresh: boolean): Floating => {
+    const { W, H } = sizeRef.current;
+    const lanes = lanesFor(W, H);
+    const laneW = W / lanes;
+    // a veces ordenadas, a veces más sueltas: tamaño, desfase e inclinación variables
+    const loose = Math.random() < 0.55;
+    const w = laneW * (loose ? 0.84 + Math.random() * 0.1 : 0.92 + Math.random() * 0.04);
+    const jitter = (Math.random() - 0.5) * laneW * (loose ? 0.1 : 0.03);
+    const x = lane * laneW + (laneW - w) / 2 + jitter;
+    const r = loose ? (Math.random() - 0.5) * 9 : (Math.random() - 0.5) * 2.5;
+    // altura estimada hasta medirla en pantalla
+    const ratio = card.kind === "photo" && card.width && card.height ? card.width / card.height : 0.8;
+    const h = card.kind === "photo" ? w * (0.05 + 0.9 / (ratio < 0.9 ? 0.8 : ratio > 1.15 ? 1.25 : 1) + 0.2) : w * 0.85;
+    return { card, lane, t0, x, r, w, h, fresh };
+  };
+
+  // Al recargar la pantalla: recuperar lo que estaba subiendo, en la altura que corresponde
+  useEffect(() => {
+    if (restored.current || !size.W || !cards.length) return;
     restored.current = true;
-    const now = Date.now();
-    const recent = cards
-      .filter((c) => c.playedAt && now - new Date(c.playedAt).getTime() < dwell * 1000)
-      .slice(-slots.length);
-    recent.forEach((c) => used.current.add(c.id));
-    setWall(recent.map((c, i) => ({ card: c, slot: i, enteredAt: new Date(c.playedAt!).getTime(), z: z.current++, leaving: false, leftAt: 0, fresh: false })));
+    const now = performance.now() / 1000;
+    const wall0: Floating[] = [];
+    const lanes = lanesFor(size.W, size.H);
+    cards
+      .filter((c) => c.playedAt && Date.now() - new Date(c.playedAt).getTime() < dwell * 1000)
+      .forEach((c, i) => {
+        used.current.add(c.id);
+        const elapsed = (Date.now() - new Date(c.playedAt!).getTime()) / 1000;
+        wall0.push(place(c, i % lanes, now - elapsed, false));
+      });
+    wallRef.current = wall0;
+    setWall(wall0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards.length]);
+  }, [size.W, cards.length]);
 
+  // Animación continua: posiciones, salidas por arriba y entradas por abajo
   useEffect(() => {
-    if (paused) return;
-    const tick = () => {
-      const now = Date.now();
-      setWall((prev) => {
-        let next = prev.filter((p) => !(p.leaving && now - p.leftAt > 1300));
-        // vencidas o retiradas desde el panel: salen con animación
-        next = next.map((p) => (!p.leaving && (now - p.enteredAt > dwell * 1000 || !cardsRef.current.some((c) => c.id === p.card.id)) ? { ...p, leaving: true, leftAt: now } : p));
-
+    let raf = 0;
+    let last = performance.now();
+    const frame = (nowMs: number) => {
+      const dt = Math.min(0.1, (nowMs - last) / 1000);
+      last = nowMs;
+      if (!pausedRef.current) clock.current += dt;
+      const t = clock.current;
+      const { W, H } = sizeRef.current;
+      if (W && H) {
         const queue = cardsRef.current.filter((c) => !c.playedAt && !used.current.has(c.id));
-        const incoming = queue[0];
-        if (incoming) {
-          const active = next.filter((p) => !p.leaving);
-          const taken = new Set(active.map((p) => p.slot));
-          const free = slots.map((_, i) => i).filter((i) => !taken.has(i));
-          let slot: number;
-          if (free.length) slot = free[Math.floor(Math.random() * free.length)];
-          else {
-            const oldest = active.reduce((a, b) => (a.enteredAt < b.enteredAt ? a : b));
-            slot = oldest.slot;
-            next = next.map((p) => (p === oldest ? { ...p, leaving: true, leftAt: now } : p));
-          }
-          used.current.add(incoming.id);
-          onPlayed([incoming]);
-          next = [...next, { card: incoming, slot, enteredAt: now, z: z.current++, leaving: false, leftAt: 0, fresh: true }];
-        }
-        return next;
-      });
-    };
-    tick();
-    const t = setInterval(tick, step * 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paused, step, dwell, kind]);
+        // sube despacio; si hay mucho por mostrar, acelera un poco para no atrasarse
+        const travel = Math.max(35, dwell);
+        const speed = (H / travel) * (1 + Math.min(1.5, queue.length / 15));
+        let changed = false;
+        const alive = cardsRef.current;
 
-  // Limpieza de las que terminaron de salir y salida de las vencidas aunque no llegue nada nuevo
-  useEffect(() => {
-    const t = setInterval(() => {
-      const now = Date.now();
-      setWall((prev) => {
-        const next = prev
-          .filter((p) => !(p.leaving && now - p.leftAt > 1300))
-          .map((p) => (!p.leaving && (now - p.enteredAt > dwell * 1000 || !cardsRef.current.some((c) => c.id === p.card.id)) ? { ...p, leaving: true, leftAt: now } : p));
-        return next.length === prev.length && next.every((p, i) => p === prev[i]) ? prev : next;
-      });
-    }, 1500);
-    return () => clearInterval(t);
+        for (const f of wallRef.current) {
+          const el = els.current.get(f.card.id);
+          if (!el) continue;
+          if (el.dataset.measured !== "1" && el.offsetHeight) { f.h = el.offsetHeight; el.dataset.measured = "1"; }
+          const y = H + 12 - speed * (t - f.t0);
+          (f as Floating & { y?: number }).y = y;
+          el.style.transform = `translate3d(${f.x}px, ${y}px, 0) rotate(${f.r}deg)`;
+        }
+
+        // salen las que pasaron por arriba o fueron retiradas desde el panel
+        const kept = wallRef.current.filter((f) => {
+          const y = (f as Floating & { y?: number }).y ?? H;
+          return y > -f.h - 30 && alive.some((c) => c.id === f.card.id);
+        });
+        if (kept.length !== wallRef.current.length) { wallRef.current = kept; changed = true; }
+
+        // entra una nueva por abajo en la columna con más espacio libre
+        if (!pausedRef.current && queue.length) {
+          const lanes = lanesFor(W, H);
+          let best = -1, bestRoom = -Infinity;
+          for (let l = 0; l < lanes; l++) {
+            const inLane = wallRef.current.filter((f) => f.lane === l);
+            const lowest = inLane.reduce((m, f) => Math.max(m, ((f as Floating & { y?: number }).y ?? H) + f.h), -Infinity);
+            const room = inLane.length ? H - lowest : H; // espacio libre bajo la última de la columna
+            if (room > bestRoom) { bestRoom = room; best = l; }
+          }
+          const gap = (W / lanes) * 0.1;
+          // las columnas no arrancan juntas: la anterior debe ir subiendo antes de que entre otra
+          const prev = lastSpawn.current;
+          const staggered = !prev || speed * (t - prev.t0) >= prev.h * nextStagger.current;
+          if (best >= 0 && bestRoom >= gap && staggered) {
+            const card = queue[0];
+            used.current.add(card.id);
+            onPlayedRef.current([card]);
+            const placed = place(card, best, t, true);
+            lastSpawn.current = placed;
+            nextStagger.current = 0.35 + Math.random() * 0.4;
+            wallRef.current = [...wallRef.current, placed];
+            changed = true;
+          }
+        }
+        if (changed) setWall(wallRef.current);
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dwell]);
 
-  const empty = wall.filter((p) => !p.leaving).length === 0;
+  const empty = wall.length === 0;
   useEffect(() => onEmpty(empty), [empty, onEmpty]);
 
   return (
-    <div className="relative h-full w-full">
-      {wall.map((p) => {
-        const s = slots[p.slot % slots.length];
-        return (
-          <div
-            key={p.card.id}
-            className={`absolute transition-[opacity,transform] duration-[1100ms] ease-suave ${p.leaving ? "opacity-0 translate-y-[3vmin]" : "opacity-100"}`}
-            style={{ left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, zIndex: p.z }}
-          >
-            <div className={p.fresh ? "animate-[drop_1100ms_cubic-bezier(0.22,1,0.36,1)_both]" : ""} style={{ transform: `rotate(${s.r}deg)` }}>
-              {p.card.kind === "photo" ? <Polaroid card={p.card} fresh={p.fresh} /> : <NoteCard card={p.card} />}
-            </div>
-          </div>
-        );
-      })}
+    <div ref={box} className="relative h-full w-full overflow-hidden [mask-image:linear-gradient(to_bottom,transparent_0,black_9%,black_93%,transparent_100%)]">
+      {wall.map((f) => (
+        <div
+          key={f.card.id}
+          ref={(el) => { if (el) els.current.set(f.card.id, el); else els.current.delete(f.card.id); }}
+          className="absolute left-0 top-0 will-change-transform"
+          style={{ width: f.w, transform: `translate3d(${f.x}px, ${size.H + 12}px, 0) rotate(${f.r}deg)` }}
+        >
+          {f.card.kind === "photo" ? <Polaroid card={f.card} fresh={f.fresh} /> : <NoteCard card={f.card} />}
+        </div>
+      ))}
       <style>{`
-        @keyframes drop{from{opacity:0;transform:translateY(-6vmin) scale(1.08) rotate(0deg)}to{opacity:1}}
         @keyframes develop{0%{filter:brightness(1.9) saturate(0) sepia(.35) blur(3px);opacity:.55}60%{filter:brightness(1.15) saturate(.7) sepia(.1) blur(0)}100%{filter:none;opacity:1}}
       `}</style>
     </div>
@@ -145,7 +190,7 @@ function Polaroid({ card, fresh }: { card: WallPhoto; fresh: boolean }) {
     <figure className="bg-[#FBF8F2] p-[5%] pb-0 shadow-[0_1.4vmin_3.5vmin_rgba(0,0,0,0.45),0_0.2vmin_0.4vmin_rgba(0,0,0,0.25)] [container-type:inline-size]">
       <div className="relative overflow-hidden bg-[#1c1b19]" style={{ aspectRatio: aspect }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={card.url} alt="" className={`absolute inset-0 h-full w-full object-cover ${fresh ? "animate-[develop_4.5s_ease-out_both]" : ""}`} />
+        <img src={card.url} alt="" className={`absolute inset-0 h-full w-full object-cover ${fresh ? "animate-[develop_5s_ease-out_both]" : ""}`} />
       </div>
       <figcaption className={`flex items-center justify-center px-[3%] text-center ${card.message ? "min-h-[22cqw] py-[4cqw]" : "h-[16cqw]"}`}>
         {card.message && (
@@ -162,8 +207,8 @@ function Polaroid({ card, fresh }: { card: WallPhoto; fresh: boolean }) {
 function NoteCard({ card }: { card: WallNote }) {
   const len = card.body.length;
   return (
-    <div className="relative mx-[6%] [container-type:inline-size]">
-      <span aria-hidden className="absolute -top-[4cqw] left-1/2 h-[9cqw] w-[38cqw] -translate-x-1/2 rotate-[-3deg] bg-[#E8DFD3]/80 shadow-sm" />
+    <div className="relative mx-[4%] pt-[4cqw] [container-type:inline-size]">
+      <span aria-hidden className="absolute left-1/2 top-0 z-10 h-[9cqw] w-[38cqw] -translate-x-1/2 rotate-[-3deg] bg-[#E8DFD3]/85 shadow-sm" />
       <div className="flex min-h-[70cqw] items-center justify-center bg-[#F4ECDF] px-[9cqw] py-[11cqw] text-center shadow-[0_1.4vmin_3.5vmin_rgba(0,0,0,0.4)]">
         <p className={`font-hand leading-[1.08] text-[#2b2a27] ${len < 40 ? "text-[13cqw]" : len < 100 ? "text-[10cqw]" : "text-[8cqw]"}`}>{card.body}</p>
       </div>

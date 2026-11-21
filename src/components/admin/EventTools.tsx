@@ -14,6 +14,7 @@ type Props = {
   operators: { id: string; name: string; revoked_at: string | null }[];
   hasCover: boolean;
   hasLogo: boolean;
+  theme: { bg?: string; overlay?: number; bgKey?: string };
   live: { paused: boolean; layout: string; show_qr: boolean; featured_media_id: string | null };
 };
 
@@ -21,7 +22,7 @@ const Block = ({ title, children }: { title: string; children: React.ReactNode }
   <section className="border-t border-carbon/10 py-8"><h2 className="text-[26px]">{title}</h2><div className="mt-4">{children}</div></section>
 );
 
-export default function EventTools({ eventId, urls, hasHostAccess, links, devices, operators, hasCover, hasLogo, live }: Props) {
+export default function EventTools({ eventId, urls, hasHostAccess, links, devices, operators, hasCover, hasLogo, theme, live }: Props) {
   const base = `/api/admin/eventos/${eventId}`;
   const [hostCode, setHostCode] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -29,6 +30,20 @@ export default function EventTools({ eventId, urls, hasHostAccess, links, device
   const [state, setState] = useState(live);
   const [msg, setMsg] = useState<string | null>(null);
   const [opUrl, setOpUrl] = useState<string | null>(null);
+
+  const [bg, setBg] = useState(theme.bg ?? "calido");
+  const [overlay, setOverlay] = useState(theme.overlay ?? 0.45);
+  const saveBg = (next: string, ov = overlay) => call(async () => { await postJSON(`${base}/fondo`, { bg: next, overlay: ov }); setBg(next); }, "Fondo actualizado. La pantalla lo toma en unos segundos.");
+  async function uploadBg(file: File) {
+    if (!/^image\/(png|jpeg)$/.test(file.type)) throw new Error("El fondo debe ser JPG o PNG.");
+    const prep = await prepare(file); // se reduce a 2048 px para que cargue rápido
+    const blob = prep.display ?? file;
+    const { url } = await postJSON<{ url: string; type: string }>(`${base}/fondo?subir=1&type=image/jpeg`, {});
+    await put(url, blob, "image/jpeg");
+    const r = await fetch(`${base}/fondo`, { method: "PUT" });
+    if (!r.ok) throw new Error((await r.json()).error);
+    setBg("imagen");
+  }
 
   async function uploadLogo(file: File) {
     if (!/^image\/(png|jpeg)$/.test(file.type)) throw new Error("El logo debe ser PNG o JPEG.");
@@ -82,6 +97,34 @@ export default function EventTools({ eventId, urls, hasHostAccess, links, device
         <label className="btn-quiet mt-4 cursor-pointer">Elegir imagen
           <input type="file" accept="image/jpeg,image/png" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) call(() => uploadCover(f), "Portada actualizada. Recarga para verla."); }} /></label>
         {hasCover && <button className="btn-quiet ml-3" onClick={() => call(() => fetch(`${base}/portada`, { method: "DELETE" }), "Portada quitada.")}>Quitar portada</button>}
+      </Block>
+
+      <Block title="Fondo de la pantalla">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {([
+            ["calido", "Cálido", "radial-gradient(ellipse at 30% 110%,rgba(183,154,112,.45),transparent 60%),radial-gradient(circle at 80% 20%,rgba(255,200,130,.25),transparent 30%),#242321"],
+            ["carbon", "Carbón liso", "#242321"],
+            ["lino", "Lino claro", "radial-gradient(ellipse at 50% 0%,#fffdf8,#efe6d8)"],
+            ["imagen", "Imagen propia", theme.bgKey ? "linear-gradient(135deg,#3a3633,#1e1d1b)" : "repeating-linear-gradient(45deg,#e8dfd3 0 8px,#f7f3ed 8px 16px)"],
+          ] as const).map(([id, label, css]) => (
+            <button key={id} onClick={() => (id === "imagen" && !theme.bgKey ? undefined : saveBg(id))}
+              className={`overflow-hidden rounded-xl border text-left ${bg === id ? "border-carbon ring-2 ring-carbon" : "border-carbon/15"}`}>
+              <span className="block h-16" style={{ background: css }} />
+              <span className="block px-3 py-2 text-[13px]">{label}{id === "imagen" && !theme.bgKey ? " (sube una)" : ""}</span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-4">
+          <label className="btn-quiet cursor-pointer">Subir imagen de fondo
+            <input type="file" accept="image/jpeg,image/png" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) call(() => uploadBg(f), "Fondo subido. Recarga esta página para verlo marcado."); }} /></label>
+          {bg === "imagen" && (
+            <label className="flex items-center gap-3 text-[14px]">Oscurecer la imagen
+              <input type="range" min={0} max={0.85} step={0.05} value={overlay} onChange={(e) => setOverlay(Number(e.target.value))}
+                onMouseUp={() => saveBg("imagen", overlay)} onTouchEnd={() => saveBg("imagen", overlay)} className="accent-carbon" />
+              <span className="w-10 tabular-nums text-piedra">{Math.round(overlay * 100)}%</span></label>
+          )}
+        </div>
+        <p className="mt-3 text-[13px] text-piedra">Para empresas: sube su imagen de marca como fondo y su logo más abajo. Oscurece la imagen si el QR o los textos no se leen bien.</p>
       </Block>
 
       <Block title="Logo del evento (opcional)">

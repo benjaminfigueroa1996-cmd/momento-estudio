@@ -3,7 +3,7 @@
 export type Prepared = {
   file: File;
   type: string;
-  display: Blob | null; // 2048 px, JPEG
+  display: Blob | null; // 3072 px, JPEG alta calidad (pantallas Full HD y 4K)
   thumb: Blob | null;   // 480 px, JPEG
   width?: number;
   height?: number;
@@ -16,7 +16,10 @@ async function resize(bitmap: ImageBitmap, max: number, quality: number) {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, 0, 0, w, h);
   return new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", quality));
 }
 
@@ -25,7 +28,7 @@ export async function prepare(file: File): Promise<Prepared> {
   const type = file.type || (file.name.toLowerCase().endsWith(".heic") ? "image/heic" : "");
   try {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-    const [display, thumb] = await Promise.all([resize(bmp, 2048, 0.86), resize(bmp, 480, 0.8)]);
+    const [display, thumb] = await Promise.all([resize(bmp, 3072, 0.9), resize(bmp, 480, 0.8)]);
     const out = { file, type, display, thumb, width: bmp.width, height: bmp.height, preview: URL.createObjectURL(thumb ?? file) };
     bmp.close();
     return out;

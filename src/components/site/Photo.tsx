@@ -12,7 +12,7 @@ export default function Photo({
 }: { n: number; alt: string; className?: string; priority?: boolean; sizes?: string; position?: string }) {
   const [ok, setOk] = useState(true);
   return (
-    <div className={`relative overflow-hidden bg-[linear-gradient(135deg,#E8DFD3,#d4c5b0)] ${className}`}>
+    <div className={`${/\b(absolute|fixed)\b/.test(className) ? "" : "relative"} overflow-hidden bg-[linear-gradient(135deg,#E8DFD3,#d4c5b0)] ${className}`}>
       {ok && (
         <Image
           src={`/fotos/${String(n).padStart(2, "0")}.jpg`}

@@ -55,6 +55,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       slideSeconds: ev.screen_slide_seconds,
       ...wallTiming(ev.screen_slide_seconds),
     },
+    theme: {
+      bg: (ev.theme?.bg as string) || "calido",
+      overlay: typeof ev.theme?.overlay === "number" ? (ev.theme.overlay as unknown as number) : 0.45,
+      image: ev.theme?.bgKey ? await signGet(ev.theme.bgKey as string, { seconds: 7200 }) : null,
+    },
     state: { paused: s.paused, layout: s.layout, featured: s.featured_media_id, showQr: s.show_qr },
     guestUrl: `${env.siteUrl()}/e/${ev.slug}`,
     items,

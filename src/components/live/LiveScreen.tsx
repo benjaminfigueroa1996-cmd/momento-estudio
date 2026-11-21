@@ -12,6 +12,7 @@ type Data = {
   guestUrl: string;
   items: { id: string; url: string; width: number | null; height: number | null; featured: boolean; message: string | null; at: string; playedAt: string | null }[];
   notes: { id: string; body: string; at: string; playedAt: string | null }[];
+  theme?: { bg: string; overlay: number; image: string | null };
 };
 
 const AREAS = ["a", "b", "c", "d"];
@@ -108,9 +109,9 @@ export default function LiveScreen({ slug, screenKey }: { slug: string; screenKe
   return (
     <main
       onDoubleClick={() => document.documentElement.requestFullscreen?.().catch(() => undefined)}
-      className={`relative h-dvh w-screen cursor-none overflow-hidden bg-carbon text-marfil ${side ? "flex" : "flex flex-col"}`}
+      className={`relative h-dvh w-screen cursor-none overflow-hidden bg-carbon text-marfil ${side ? "flex" : "flex flex-col"} ${data.theme?.bg === "lino" ? "theme-light" : ""}`}
     >
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_110%,rgba(183,154,112,0.16),transparent_60%)]" />
+      <Background theme={data.theme ?? { bg: "calido", overlay: 0.45, image: null }} />
 
       {/* Escenario */}
       <section className={`relative min-h-0 min-w-0 flex-1 ${side ? "p-[2.2vmin] pr-0" : "p-[2.2vmin] pb-0"}`}>
@@ -153,6 +154,10 @@ export default function LiveScreen({ slug, screenKey }: { slug: string; screenKe
 
       {offline && <span className="absolute left-[1.2vmin] top-[1.2vmin] h-[1vmin] w-[1vmin] rounded-full bg-champagne/80" title="Reconectando" />}
       <style>{`
+        .theme-light .text-marfil{color:#242321}
+        .theme-light .text-marfil\/70{color:rgba(36,35,33,.7)}
+        .theme-light .text-marfil\/45{color:rgba(36,35,33,.5)}
+        .theme-light .text-champagne{color:#8d6f45}
         @keyframes cell{from{opacity:0;transform:translateY(2.5vmin) scale(.985)}to{opacity:1;transform:none}}
         @keyframes drift{from{transform:scale(1.045)}to{transform:scale(1)}}
         @keyframes bubble{from{opacity:0;transform:translateY(6vh) scale(.96)}to{opacity:1;transform:none}}
@@ -193,9 +198,9 @@ const Signature = () => <p className="font-serif text-[1.6vmin] tracking-[0.06em
 function Rail({ ev, qr, showQr, orient }: { ev: Data["event"]; qr: string; showQr: boolean; orient: Orient }) {
   if (orient === "landscape" || orient === "ultrawide") {
     return (
-      <aside className={`relative flex shrink-0 flex-col justify-between px-[3vmin] py-[4vmin] ${orient === "ultrawide" ? "w-[16vw]" : "w-[21vw]"}`}>
+      <aside className={`relative flex shrink-0 flex-col justify-between px-[3vmin] py-[4vmin] ${orient === "ultrawide" ? "w-[14vw]" : "w-[18vw]"}`}>
         <Identity ev={ev} />
-        {showQr && <QrTile qr={qr} size={orient === "ultrawide" ? "11vw" : "15vw"} />}
+        {showQr && <QrTile qr={qr} size={orient === "ultrawide" ? "10vw" : "13vw"} />}
         <Signature />
       </aside>
     );
@@ -228,6 +233,35 @@ function Waiting({ ev, qr }: { ev: Data["event"]; qr: string }) {
       <QrTile qr={qr} size="24vmin" />
       <p className="max-w-[60vmin] text-[2.2vmin] leading-snug text-marfil/70">Escanea el código con la cámara de tu teléfono y comparte tus fotos y mensajes en esta pantalla.</p>
       <Signature />
+    </div>
+  );
+}
+
+/** Fondo de la pantalla según el evento: cálido, carbón liso, lino claro o una imagen propia. */
+function Background({ theme }: { theme: { bg: string; overlay: number; image: string | null } }) {
+  if (theme.bg === "imagen" && theme.image) {
+    return (
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={theme.image} alt="" className="h-full w-full object-cover" />
+        <div className="absolute inset-0" style={{ background: `rgba(20,19,17,${theme.overlay})` }} />
+      </div>
+    );
+  }
+  if (theme.bg === "lino") {
+    return <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,#fffdf8,#ede3d4_75%)]" />;
+  }
+  if (theme.bg === "carbon") {
+    return <div aria-hidden className="pointer-events-none absolute inset-0 bg-carbon" />;
+  }
+  // Cálido: luz dorada difusa y destellos suaves, como luces de fiesta desenfocadas
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 bg-carbon">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_115%,rgba(183,154,112,0.32),transparent_60%),radial-gradient(ellipse_at_85%_-10%,rgba(255,196,120,0.14),transparent_50%)]" />
+      {[[12, 18, 9], [78, 12, 7], [64, 70, 11], [22, 78, 8], [45, 35, 6], [90, 55, 9], [34, 58, 5]].map(([x, y, s], i) => (
+        <span key={i} className="absolute rounded-full bg-[#f3c98a] blur-[2.2vmin]" style={{ left: `${x}%`, top: `${y}%`, width: `${s}vmin`, height: `${s}vmin`, opacity: 0.1 + (i % 3) * 0.04 }} />
+      ))}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,0,0,0.45))]" />
     </div>
   );
 }

@@ -24,7 +24,7 @@ export type EventRow = {
   timezone: string;
   city: string | null;
   cover_key: string | null;
-  theme: Record<string, string>;
+  theme: { bg?: string; overlay?: number; bgKey?: string; bgVersion?: number } & Record<string, unknown>;
   screen_key: string;
   screen_slide_seconds: number;
   screen_ttl_minutes: number;

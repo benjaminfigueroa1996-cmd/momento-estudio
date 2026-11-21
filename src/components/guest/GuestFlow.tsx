@@ -41,7 +41,7 @@ export default function GuestFlow(props: {
     setError(null);
     const files = Array.from(list).slice(0, props.maxFiles - items.length);
     const prepared = await Promise.all(files.map(prepare));
-    setItems((prev) => [...prev, ...prepared.map((prep) => ({ prep, dest: [] as Dest[], message: "", progress: 0, state: "lista" as const }))]);
+    setItems((prev) => [...prev, ...prepared.map((prep) => ({ prep, dest: ["screen", "album"] as Dest[], message: "", progress: 0, state: "lista" as const }))]);
     setStep("destinos");
   }
 
@@ -198,7 +198,7 @@ export default function GuestFlow(props: {
             </div>
           )}
 
-          <h2 className="mt-7 text-[26px]">¿Dónde quieres compartirla?</h2>
+          <h2 className="mt-7 text-[22px]">Se compartirá en</h2>
           <div className="mt-4 space-y-3">
             <DestinationCard title="Pantalla del evento" detail="Aparece en la pantalla durante la celebración, con tu mensaje si quieres." selected={it.dest.includes("screen")} onToggle={() => toggle(current, "screen")} icon={<ScreenIcon />} />
             <DestinationCard title="Álbum compartido" detail="Queda en el álbum digital; los invitados pueden verla y descargarla." selected={it.dest.includes("album")} onToggle={() => toggle(current, "album")} icon={<AlbumIcon />} />
@@ -218,8 +218,8 @@ export default function GuestFlow(props: {
           )}
 
           <div className="mt-auto space-y-3 pt-8">
-            <button className="btn-primary w-full" disabled={!ready} onClick={() => setStep("revisar")}>
-              {ready ? "Revisar envío" : `Elige un destino${items.length > 1 ? " para cada foto" : ""}`}
+            <button className="btn-primary w-full" disabled={!ready} onClick={send}>
+              {ready ? (items.length === 1 ? "Enviar foto" : `Enviar ${items.length} fotos`) : `Elige un destino${items.length > 1 ? " para cada foto" : ""}`}
             </button>
             {items.length < props.maxFiles && <button className="btn-quiet w-full" onClick={() => gallery.current?.click()}>Agregar más fotos</button>}
           </div>

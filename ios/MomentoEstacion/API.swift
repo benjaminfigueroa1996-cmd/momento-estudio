@@ -60,7 +60,7 @@ struct API {
         let image = UIImage(data: jpeg)
         try await put(t.original, jpeg)
         if let image {
-            if let d = image.resized(maxSide: 2048).jpegData(compressionQuality: 0.86) { try await put(t.display, d) }
+            if let d = image.resized(maxSide: 3072).jpegData(compressionQuality: 0.9) { try await put(t.display, d) }
             if let s = image.resized(maxSide: 480).jpegData(compressionQuality: 0.8) { try await put(t.thumb, s) }
         }
         var body: [String: Any] = ["mediaId": t.mediaId, "originalId": originalId, "destinations": destinations]
