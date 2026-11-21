@@ -36,5 +36,6 @@ export const quoteSchema = z.object({
   segundoFotografo: z.boolean().optional(),
   segundoIpad: z.boolean().optional(),
   horasExtra: z.coerce.number().int().min(0).max(8).optional(),
-  fueraDeSantiago: z.boolean().optional(),
+  lat: z.number().min(-56).max(-17).optional(),
+  lng: z.number().min(-110).max(-66).optional(),
 });

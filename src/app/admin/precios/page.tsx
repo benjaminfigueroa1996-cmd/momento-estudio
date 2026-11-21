@@ -30,7 +30,12 @@ export default async function Precios() {
           {campo("completo", "Paquete completo", "Plataforma + estación iPad + fotógrafo + ayudante")}
           {campo("plataforma", "Solo plataforma", "Sin traslado ni personal")}
           {campo("horasFotografo", "Horas de fotógrafo incluidas")}
-          {campo("traslado", "Traslado", "Se suma siempre en el paquete completo")}
+        </>)}
+        {grupo("Traslado", <>
+          {campo("traslado", "Traslado base", "Se suma siempre en el paquete completo")}
+          {campo("trasladoRadioKm", "Sin recargo hasta (km)", "Distancia por carretera desde el centro de Santiago")}
+          {campo("trasladoPorKm", "Valor por km adicional", "Por cada km sobre el radio, solo ida")}
+          {campo("trasladoRevisarKm", "Revisar a mano sobre (km)", "Para considerar alojamiento y viáticos")}
         </>)}
         {grupo("Extras", <>
           {campo("segundoFotografo", "Segundo fotógrafo")}

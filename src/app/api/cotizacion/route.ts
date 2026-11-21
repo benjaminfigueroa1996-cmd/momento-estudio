@@ -4,7 +4,7 @@ import { quoteSchema } from "@/lib/schemas";
 import { json, fail, rateLimit } from "@/lib/guard";
 import { brandedEmail, sendEmail } from "@/lib/email";
 import { getPricing } from "@/lib/pricing-server";
-import { calcularCotizacion, formatCLP } from "@/lib/pricing";
+import { calcularCotizacion, distanciaDesdeSantiago, formatCLP } from "@/lib/pricing";
 
 export async function POST(req: Request) {
   if (!(await rateLimit("quote", 8, 3600))) return fail("Ya recibimos varias solicitudes desde esta conexión. Intenta más tarde.", 429);
@@ -22,7 +22,8 @@ export async function POST(req: Request) {
     segundoFotografo: q.paquete === "completo" && !!q.segundoFotografo,
     segundoIpad: q.paquete === "completo" && !!q.segundoIpad,
     horasExtra: q.paquete === "completo" ? q.horasExtra ?? 0 : 0,
-    fueraDeSantiago: !!q.fueraDeSantiago,
+    distanciaKm: q.lat != null && q.lng != null ? distanciaDesdeSantiago(q.lat, q.lng) : undefined,
+    lat: q.lat, lng: q.lng,
   };
   const cot = calcularCotizacion(cfg, opciones);
   const token = randomBytes(18).toString("base64url");

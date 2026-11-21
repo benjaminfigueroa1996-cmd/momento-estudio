@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { postJSON } from "@/lib/client/image";
-import { DEFAULT_PRICING, calcularCotizacion, formatCLP, type Paquete, type PricingConfig } from "@/lib/pricing";
+import LugarInput, { type Lugar } from "./LugarInput";
+import { DEFAULT_PRICING, calcularCotizacion, distanciaDesdeSantiago, formatCLP, type Paquete, type PricingConfig } from "@/lib/pricing";
 
 export default function QuoteForm() {
   const [cfg, setCfg] = useState<PricingConfig>(DEFAULT_PRICING);
@@ -14,15 +15,16 @@ export default function QuoteForm() {
   const [segundoFotografo, setSegundoFotografo] = useState(false);
   const [segundoIpad, setSegundoIpad] = useState(false);
   const [horasExtra, setHorasExtra] = useState(0);
-  const [fueraDeSantiago, setFuera] = useState(false);
+  const [lugar, setLugar] = useState<Lugar>({ texto: "" });
+  const distanciaKm = lugar.lat != null && lugar.lng != null ? distanciaDesdeSantiago(lugar.lat, lugar.lng) : undefined;
 
   useEffect(() => {
     fetch("/api/precios").then((r) => (r.ok ? r.json() : null)).then((c) => c && setCfg(c)).catch(() => null);
   }, []);
 
   const cot = useMemo(
-    () => calcularCotizacion(cfg, { paquete, invitados: Number(invitados) || undefined, fecha, segundoFotografo, segundoIpad, horasExtra, fueraDeSantiago }),
-    [cfg, paquete, invitados, fecha, segundoFotografo, segundoIpad, horasExtra, fueraDeSantiago],
+    () => calcularCotizacion(cfg, { paquete, invitados: Number(invitados) || undefined, fecha, segundoFotografo, segundoIpad, horasExtra, distanciaKm }),
+    [cfg, paquete, invitados, fecha, segundoFotografo, segundoIpad, horasExtra, distanciaKm],
   );
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -33,7 +35,8 @@ export default function QuoteForm() {
       const r = (await postJSON("/api/cotizacion", {
         ...data,
         guests: invitados ? Number(invitados) : undefined,
-        paquete, segundoFotografo, segundoIpad, horasExtra, fueraDeSantiago,
+        paquete, segundoFotografo, segundoIpad, horasExtra,
+        location: lugar.texto, lat: lugar.lat, lng: lugar.lng,
       })) as { token?: string };
       if (r?.token) window.location.href = `/cotizacion/${r.token}`;
       else setState("idle");
@@ -63,7 +66,7 @@ export default function QuoteForm() {
         <select name="event_type" required className="field" defaultValue=""><option value="" disabled>Elige una opción</option><option>Matrimonio</option><option>Cumpleaños</option><option>Aniversario</option><option>Evento corporativo</option><option>Otro</option></select></label>
       <label className="block"><span className="label">Fecha del evento</span><input name="event_date" type="date" className="field" value={fecha} onChange={(e) => setFecha(e.target.value)} /></label>
       <label className="block"><span className="label">Invitados aproximados</span><input type="number" min={1} max={5000} required className="field" value={invitados} onChange={(e) => setInvitados(e.target.value)} /></label>
-      <label className="block"><span className="label">Comuna o lugar</span><input name="location" className="field" /></label>
+      <div className="block md:col-span-2"><span className="label">Lugar del evento</span><LugarInput onChange={setLugar} /></div>
 
       {paquete === "completo" && (
         <fieldset className="grid gap-3 rounded-2xl border border-carbon/10 p-4 md:col-span-2">
@@ -72,7 +75,6 @@ export default function QuoteForm() {
           <label className="flex items-center justify-between gap-4 text-[15px]"><span><input type="checkbox" className="mr-3 accent-carbon" checked={segundoIpad} onChange={(e) => setSegundoIpad(e.target.checked)} />Segunda estación iPad</span><span className="text-[13px] text-carbon/60">+{formatCLP(cfg.segundoIpad)}</span></label>
           <label className="flex items-center justify-between gap-4 text-[15px]"><span>Horas adicionales de fotografía</span>
             <select className="field w-auto py-2" value={horasExtra} onChange={(e) => setHorasExtra(Number(e.target.value))}>{[0, 1, 2, 3, 4].map((h) => <option key={h} value={h}>{h === 0 ? "Ninguna" : `${h} h`}</option>)}</select></label>
-          <label className="flex items-center gap-3 text-[15px]"><input type="checkbox" className="accent-carbon" checked={fueraDeSantiago} onChange={(e) => setFuera(e.target.checked)} />El evento es fuera de Santiago</label>
         </fieldset>
       )}
 

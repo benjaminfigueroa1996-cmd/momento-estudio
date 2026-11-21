@@ -5,7 +5,10 @@ export type PricingConfig = {
   plataforma: number; // solo plataforma, cubre todo el evento
   completo: number; // plataforma + 1 estación iPad + fotógrafo + ayudante
   horasFotografo: number; // horas de fotógrafo y ayudante incluidas en el completo
-  traslado: number; // se cobra cuando el equipo va al evento
+  traslado: number; // se cobra cuando el equipo va al evento (dentro del radio de Santiago)
+  trasladoRadioKm: number; // km por carretera desde el centro de Santiago sin recargo
+  trasladoPorKm: number; // valor por cada km (ida) sobre el radio
+  trasladoRevisarKm: number; // sobre esta distancia se revisa a mano (alojamiento)
   segundoFotografo: number;
   segundoIpad: number;
   horaExtra: number; // hora adicional de fotógrafo + ayudante
@@ -27,6 +30,9 @@ export const DEFAULT_PRICING: PricingConfig = {
   completo: 900000,
   horasFotografo: 5,
   traslado: 100000,
+  trasladoRadioKm: 40,
+  trasladoPorKm: 1500,
+  trasladoRevisarKm: 250,
   segundoFotografo: 350000,
   segundoIpad: 150000,
   horaExtra: 90000,
@@ -52,7 +58,7 @@ export type QuoteInput = {
   segundoFotografo?: boolean;
   segundoIpad?: boolean;
   horasExtra?: number;
-  fueraDeSantiago?: boolean;
+  distanciaKm?: number; // km por carretera (aprox.) desde el centro de Santiago; vacío = lugar no verificado
 };
 
 export type QuoteLine = { concepto: string; detalle?: string; monto: number };
@@ -124,13 +130,31 @@ export function calcularCotizacion(cfg: PricingConfig, q: QuoteInput): Quote {
         monto: p((cfg.horaExtra + (fotografos === 2 ? cfg.horaExtraSegundo : 0)) * h),
       });
     }
-    lineas.push({ concepto: "Traslado de equipo y personal", detalle: q.fueraDeSantiago ? "Fuera de Santiago: valor referencial, se confirma según destino" : "Región Metropolitana", monto: cfg.traslado });
+    const km = q.distanciaKm;
+    const extraKm = km != null ? Math.max(0, km - cfg.trasladoRadioKm) : 0;
+    const traslado = Math.round((cfg.traslado + extraKm * cfg.trasladoPorKm) / 1000) * 1000;
+    lineas.push({
+      concepto: "Traslado de equipo y personal",
+      detalle: km == null ? "Valor referencial, se confirma según el lugar" : extraKm > 0 ? `Aprox. ${Math.round(km)} km desde Santiago` : "Santiago y alrededores",
+      monto: traslado,
+    });
   }
 
   const neto = lineas.reduce((s, l) => s + l.monto, 0);
   const iva = Math.round((neto * cfg.ivaPct) / 100);
   const revisar: string[] = [];
-  if (completo && q.fueraDeSantiago) revisar.push("Evento fuera de Santiago: confirmar traslado");
+  if (completo && q.distanciaKm == null) revisar.push("Lugar no verificado en el mapa: confirmar traslado");
+  if (completo && q.distanciaKm != null && q.distanciaKm > cfg.trasladoRevisarKm) revisar.push(`Evento a ${Math.round(q.distanciaKm)} km: revisar alojamiento y viáticos`);
   if (inv > 600) revisar.push("Más de 600 invitados");
   return { lineas, neto, iva, total: neto + iva, revisar };
+}
+
+// Distancia aproximada por carretera desde la Plaza de Armas de Santiago
+const SANTIAGO = { lat: -33.4378, lng: -70.6505 };
+export function distanciaDesdeSantiago(lat: number, lng: number) {
+  const r = (x: number) => (x * Math.PI) / 180;
+  const dLat = r(lat - SANTIAGO.lat), dLng = r(lng - SANTIAGO.lng);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(r(SANTIAGO.lat)) * Math.cos(r(lat)) * Math.sin(dLng / 2) ** 2;
+  const recta = 6371 * 2 * Math.asin(Math.sqrt(a));
+  return Math.round(recta * 1.3); // factor carretera
 }
