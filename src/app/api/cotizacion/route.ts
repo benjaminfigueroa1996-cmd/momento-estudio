@@ -1,15 +1,32 @@
+import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { quoteSchema } from "@/lib/schemas";
 import { json, fail, rateLimit } from "@/lib/guard";
 import { brandedEmail, sendEmail } from "@/lib/email";
-import { env } from "@/lib/env";
+import { getPricing } from "@/lib/pricing-server";
+import { calcularCotizacion, formatCLP } from "@/lib/pricing";
 
 export async function POST(req: Request) {
-  if (!(await rateLimit("quote", 5, 3600))) return fail("Ya recibimos varias solicitudes desde esta conexión. Intenta más tarde.", 429);
+  if (!(await rateLimit("quote", 8, 3600))) return fail("Ya recibimos varias solicitudes desde esta conexión. Intenta más tarde.", 429);
   const parsed = quoteSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("Revisa los datos del formulario.");
   const { website, ...q } = parsed.data;
   if (website) return json({ ok: true }); // bot: se descarta en silencio
+
+  // El precio siempre se recalcula en el servidor con la tabla vigente
+  const cfg = await getPricing();
+  const opciones = {
+    paquete: q.paquete,
+    invitados: q.guests,
+    fecha: q.event_date || undefined,
+    segundoFotografo: q.paquete === "completo" && !!q.segundoFotografo,
+    segundoIpad: q.paquete === "completo" && !!q.segundoIpad,
+    horasExtra: q.paquete === "completo" ? q.horasExtra ?? 0 : 0,
+    fueraDeSantiago: !!q.fueraDeSantiago,
+  };
+  const cot = calcularCotizacion(cfg, opciones);
+  const token = randomBytes(18).toString("base64url");
+  const vigencia = new Date(Date.now() + cfg.vigenciaDias * 86400000).toISOString().slice(0, 10);
 
   const row = {
     name: q.name,
@@ -20,33 +37,49 @@ export async function POST(req: Request) {
     location: q.location || null,
     guests: q.guests ?? null,
     comments: q.comments || null,
+    token,
+    package: q.paquete,
+    options: opciones,
+    quote: { ...cot, ivaPct: cfg.ivaPct, reservaPct: cfg.reservaPct, horasFotografo: cfg.horasFotografo },
+    total: cot.total,
+    valid_until: vigencia,
+    needs_review: cot.revisar.length > 0,
+    status: "cotizada",
   };
-  const { error } = await db().from("quote_requests").insert(row);
+  const { data: saved, error } = await db().from("quote_requests").insert(row).select("number").single();
   if (error) return fail("No pudimos guardar tu solicitud. Intenta nuevamente.", 500);
 
-  // Correos en español con la marca (requiere RESEND_API_KEY y COMMERCIAL_EMAIL)
-  const fecha = row.event_date ? new Date(`${row.event_date}T12:00:00`).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" }) : "";
+  const origin = new URL(req.url).origin;
+  const link = `${origin}/cotizacion/${token}`;
+  const numero = `N° ${String(saved?.number ?? "").padStart(4, "0")}`;
   const detalle: [string, string][] = [
-    ["Nombre", row.name], ["Correo", row.email], ["Teléfono", row.phone ?? ""], ["Tipo de evento", row.event_type],
-    ["Fecha", fecha], ["Lugar", row.location ?? ""], ["Invitados", row.guests ? String(row.guests) : ""], ["Comentarios", row.comments ?? ""],
+    ...cot.lineas.map((l): [string, string] => [l.concepto, formatCLP(l.monto)]),
+    ["Neto", formatCLP(cot.neto)],
+    [`IVA (${cfg.ivaPct}%)`, formatCLP(cot.iva)],
+    ["Total", formatCLP(cot.total)],
   ];
-  const texto = detalle.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n");
+  const texto = detalle.map(([k, v]) => `${k}: ${v}`).join("\n");
+
+  // Correos en español con la marca (requiere RESEND_API_KEY y COMMERCIAL_EMAIL)
   if (process.env.COMMERCIAL_EMAIL) {
-    // Aviso interno
-    await sendEmail([process.env.COMMERCIAL_EMAIL], `Nueva cotización: ${row.event_type} · ${row.name}`,
-      brandedEmail({ title: "Nueva solicitud de cotización", paragraphs: ["Llegó una solicitud desde el sitio. Responde directamente a este correo para escribirle."], rows: detalle,
-        cta: { label: "Ver en el panel", url: `${env.siteUrl()}/admin/cotizaciones` } }),
-      texto, row.email);
-    // Confirmación al cliente
-    await sendEmail([row.email], "Recibimos tu solicitud · Momento Estudio",
+    await sendEmail([process.env.COMMERCIAL_EMAIL], `Cotización ${numero}: ${row.event_type} · ${row.name}${row.needs_review ? " (revisar)" : ""}`,
       brandedEmail({
-        preheader: "Te responderemos pronto con una propuesta a medida.",
-        title: `¡Gracias, ${row.name.split(" ")[0]}!`,
-        paragraphs: ["Recibimos tu solicitud de cotización. Te escribiremos pronto con una propuesta a medida para tu evento.", "Este es el resumen de lo que nos enviaste:"],
-        rows: detalle.filter(([k]) => k !== "Nombre" && k !== "Correo"),
-        footnote: "Si quieres agregar algo, solo responde este correo.",
+        title: "Nueva cotización enviada",
+        paragraphs: [`${row.name} (${row.email}${row.phone ? `, ${row.phone}` : ""}) cotizó desde el sitio.`, ...cot.revisar.map((r) => `Revisar: ${r}`)],
+        rows: detalle,
+        cta: { label: "Ver cotización", url: link },
       }),
-      `Hola ${row.name}, recibimos tu solicitud de cotización. Te escribiremos pronto.\n\n${texto}`, process.env.COMMERCIAL_EMAIL);
+      texto, row.email).catch(() => null);
+    await sendEmail([row.email], `Tu cotización ${numero} · Momento Estudio`,
+      brandedEmail({
+        preheader: `Total ${formatCLP(cot.total)} IVA incluido. Válida hasta el ${new Date(`${vigencia}T12:00:00`).toLocaleDateString("es-CL", { day: "numeric", month: "long" })}.`,
+        title: `¡Gracias, ${row.name.split(" ")[0]}!`,
+        paragraphs: ["Esta es la cotización para tu evento. Puedes verla completa y descargarla en PDF desde el botón.", "Para reservar la fecha, solo responde este correo."],
+        rows: detalle,
+        cta: { label: "Ver mi cotización", url: link },
+        footnote: `Cotización válida por ${cfg.vigenciaDias} días. La fecha se reserva con el ${cfg.reservaPct}% del total.`,
+      }),
+      `Hola ${row.name}, esta es tu cotización:\n\n${texto}\n\nVer completa: ${link}`, process.env.COMMERCIAL_EMAIL).catch(() => null);
   }
-  return json({ ok: true });
+  return json({ ok: true, token });
 }

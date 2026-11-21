@@ -1,13 +1,14 @@
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { setQuoteStatus } from "@/lib/actions";
+import { formatCLP } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
 export default async function Quotes() {
   await requireAdmin();
   const { data } = await db().from("quote_requests").select("*").order("created_at", { ascending: false }).limit(200);
-  const rows = (data ?? []) as Record<string, string | number | null>[];
+  const rows = (data ?? []) as Record<string, string | number | boolean | null>[];
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       <h1 className="text-[44px]">Cotizaciones</h1>
@@ -16,13 +17,14 @@ export default async function Quotes() {
         {rows.map((q) => (
           <li key={q.id as string} className="grid gap-2 py-5 md:grid-cols-[1fr_auto]">
             <div className="text-[15px]">
-              <p className="text-[18px]">{q.name} <span className="text-piedra">· {q.event_type}</span></p>
+              <p className="text-[18px]">{q.number ? <span className="text-piedra">N° {String(q.number).padStart(4, "0")} · </span> : null}{q.name} <span className="text-piedra">· {q.event_type}</span>{q.needs_review ? <span className="ml-2 rounded-full bg-champagne/20 px-2 py-0.5 text-[12px] text-carbon">Revisar</span> : null}</p>
+              {q.total ? <p className="text-carbon/80">{q.package === "plataforma" ? "Solo plataforma" : "Paquete completo"} · <strong className="font-medium">{formatCLP(Number(q.total))}</strong> IVA incluido{q.token ? <> · <a className="underline" href={`/cotizacion/${q.token}`} target="_blank">Ver cotización</a></> : null}</p> : null}
               <p className="text-carbon/80"><a className="underline" href={`mailto:${q.email}`}>{q.email}</a>{q.phone ? ` · ${q.phone}` : ""}</p>
               <p className="text-piedra">{[q.event_date, q.location, q.guests ? `${q.guests} invitados` : null].filter(Boolean).join(" · ")}</p>
-              {q.comments && <p className="mt-2 max-w-2xl">{q.comments}</p>}
+              {q.comments ? <p className="mt-2 max-w-2xl">{String(q.comments)}</p> : null}
             </div>
             <form action={async (f) => { "use server"; await setQuoteStatus(q.id as string, String(f.get("s"))); }} className="flex items-start gap-2">
-              <select name="s" defaultValue={q.status as string} className="field w-auto py-2"><option>nueva</option><option>contactada</option><option>cotizada</option><option>cerrada</option><option>descartada</option></select>
+              <select name="s" defaultValue={q.status as string} className="field w-auto py-2"><option>nueva</option><option>cotizada</option><option>contactada</option><option>reservada</option><option>cerrada</option><option>descartada</option></select>
               <button className="btn-quiet min-h-[44px]">Guardar</button>
             </form>
           </li>

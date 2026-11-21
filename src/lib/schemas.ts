@@ -32,4 +32,9 @@ export const quoteSchema = z.object({
   guests: z.coerce.number().int().min(1).max(5000).optional(),
   comments: z.string().trim().max(3000).optional().or(z.literal("")),
   website: z.string().max(0).optional(), // trampa anti-spam: debe venir vacío
+  paquete: z.enum(["plataforma", "completo"]).default("completo"),
+  segundoFotografo: z.boolean().optional(),
+  segundoIpad: z.boolean().optional(),
+  horasExtra: z.coerce.number().int().min(0).max(8).optional(),
+  fueraDeSantiago: z.boolean().optional(),
 });

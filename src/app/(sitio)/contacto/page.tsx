@@ -6,7 +6,7 @@ export default function Contact() {
   return (
     <main className="mx-auto max-w-3xl px-6 pt-12">
       <h1 className="text-[52px] leading-tight md:text-[72px]">Cotiza tu evento</h1>
-      <p className="mt-6 max-w-xl text-[18px] text-carbon/80">Cuéntanos sobre tu celebración. Te responderemos con una propuesta a medida.</p>
+      <p className="mt-6 max-w-xl text-[18px] text-carbon/80">Cuéntanos sobre tu celebración. Elige tu experiencia y recibe tu cotización formal al instante.</p>
       <div className="mt-12"><QuoteForm /></div>
     </main>
   );

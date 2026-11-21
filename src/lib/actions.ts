@@ -81,3 +81,17 @@ export async function setQuoteStatus(id: string, status: string) {
   await db().from("quote_requests").update({ status }).eq("id", id);
   revalidatePath("/admin/cotizaciones");
 }
+
+export async function savePricing(f: FormData) {
+  await requireAdmin();
+  const { DEFAULT_PRICING, mergePricing } = await import("./pricing");
+  const raw: Record<string, unknown> = {};
+  for (const [k, def] of Object.entries(DEFAULT_PRICING)) {
+    const v = String(f.get(k) ?? "").trim();
+    if (!v) continue;
+    raw[k] = Array.isArray(def) ? v.split(/[\s,]+/).filter(Boolean).map(Number) : Number(v.replace(/\./g, "").replace(",", "."));
+  }
+  const value = JSON.stringify(mergePricing(raw));
+  await db().from("settings").upsert({ key: "pricing", value, updated_at: new Date().toISOString() });
+  revalidatePath("/admin/precios");
+}

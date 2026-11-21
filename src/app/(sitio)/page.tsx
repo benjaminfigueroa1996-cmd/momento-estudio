@@ -212,7 +212,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-6xl gap-14 px-6 py-28 md:grid-cols-[1fr_1.3fr] md:py-36">
           <Reveal>
             <h2 className="text-[44px] leading-[1.05] md:text-[60px]">Cotiza tu evento</h2>
-            <p className="mt-6 max-w-sm text-[18px] leading-relaxed text-marfil/70">Matrimonios, eventos corporativos, cumpleaños y fiestas. Cuéntanos sobre tu celebración y te enviamos una propuesta a medida.</p>
+            <p className="mt-6 max-w-sm text-[18px] leading-relaxed text-marfil/70">Elige tu experiencia, ve el valor al instante y recibe tu cotización formal en un minuto.</p>
           </Reveal>
           <Reveal delay={100} className="rounded-3xl bg-marfil p-6 text-carbon md:p-10"><QuoteForm /></Reveal>
         </div>
